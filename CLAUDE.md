@@ -76,7 +76,7 @@ The owner works mostly from an **iPad in Safari** and is not a developer. Explai
   - **Notifications:** signed and declined emails also go to the member who created the document.
   - **Owner's view:** sees everything, with "· Name" shown on members' documents. Documents created before Team existed have no `createdBy` and count as the owner's.
   - **Salesperson card:** each member has `hisNumber` and `hisExpires` (their Home Improvement Salesperson registration). The owner sets them in Settings → Team.
-    - The tile uses the same green/amber/red colors. The owner sees every member's card in the Business row.
+    - The tile uses the same green/amber/red colors. The owner sees every member's card in its own full-width **Team** section below Business.
     - Reminders go to the owner and the member.
     - New contracts a member creates prefill "Salesman: name / State Registration Number" from these fields.
   - **Code:** `lib/context.js` (AsyncLocalStorage) exposes the logged-in user to the views.
