@@ -1,4 +1,4 @@
-# Onyx Contracts & Change Orders
+# Onyx Contracts Hub
 
 Create **Home Improvement Contracts** and **Change Orders** on your company forms. Send them to customers by **email and text**, and have customers **sign on their phone**. Signed copies are emailed to you and the customer automatically.
 

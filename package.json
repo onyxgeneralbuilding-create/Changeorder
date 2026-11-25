@@ -1,5 +1,5 @@
 {
-  "name": "onyx-change-orders",
+  "name": "onyx-contracts-hub",
   "version": "1.0.0",
   "description": "Create, send (email/text), and e-sign change orders for Onyx General Building, Inc.",
   "main": "server.js",
