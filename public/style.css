@@ -115,7 +115,7 @@ main { max-width: 1240px; margin: 0 auto; padding: 2.2rem max(20px, env(safe-are
 .warn, .hint.warn { color: var(--amber); }
 
 /* ---------- tabs (status / year) ---------- */
-.tabs { display: flex; gap: .4rem; flex-wrap: wrap; margin: .4rem 0 1rem; }
+.tabs { display: flex; gap: .4rem; flex-wrap: wrap; margin: 1.4rem 0 1rem; }
 .tab {
   text-decoration: none; color: var(--ink); background: transparent; border: 1px solid var(--rule);
   border-radius: 999px; padding: .28rem .8rem; font-size: .9rem;

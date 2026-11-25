@@ -63,7 +63,7 @@ The owner works mostly from an **iPad in Safari** and is not a developer. Explai
   - If any owner is 65 or older, the 5-day right to cancel applies; otherwise the 3-day one.
   - The cancellation deadline is calculated in business days, which skip Sundays and holidays.
   - A second owner can sign, at the same time or later.
-- **Dashboard:**
+- **Dashboard page:**
   - A row of yearly totals, with a year picker that defaults to the current year in Pacific time.
   - A row of renewal tiles: green when more than 60 days are left, amber at 60 or fewer, red when expired.
 - **Hub look:** the web app's style follows ndstudio.gov, toned down at the owner's request.
@@ -80,7 +80,9 @@ The owner works mostly from an **iPad in Safari** and is not a developer. Explai
     - Reminders go to the owner and the member.
     - New contracts a member creates prefill "Salesman: name / State Registration Number" from these fields.
   - **Code:** `lib/context.js` (AsyncLocalStorage) exposes the logged-in user to the views.
-- **Top menu:** Documents · Leads · Estimates · + New · Settings · Log out. The current page is underlined.
+- **Top menu:** Dashboard · Documents · Leads · Estimates · + New · Settings · Log out. The current page is underlined.
+  - **Dashboard** (`/dashboard`) holds the "at a glance" totals, the year picker and the Business tiles. Everyone lands there after logging in.
+  - **Documents** (`/`) is just the list, with the New buttons and status filters.
   - **Leads** (`/leads`) and **Estimates** (`/estimates`) are "Coming soon" placeholder pages (`views.comingSoon`) until they're built.
 - **Branding:** the app is named **"Onyx Contracts Hub"** (`appName`). Customers see only the company name.
 

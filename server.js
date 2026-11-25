@@ -268,13 +268,13 @@ app.post('/login', (req, res) => {
     failures.delete(key);
     req.session.admin = false;
     req.session.userId = member.id;
-    return res.redirect('/');
+    return res.redirect('/dashboard');
   }
   if (!member && ADMIN_PASSWORD && safeEqual(password, ADMIN_PASSWORD)) {
     failures.delete(key);
     req.session.userId = null;
     req.session.admin = true;
-    return res.redirect('/');
+    return res.redirect('/dashboard');
   }
   rec.n += 1; failures.set(key, rec);
   return html(res, views.login({ company, username, error: ADMIN_PASSWORD ? 'Wrong username or password.' : 'Set ADMIN_PASSWORD in the .env file first.' }), 401);
@@ -282,10 +282,14 @@ app.post('/login', (req, res) => {
 app.post('/logout', (req, res) => { req.session = null; res.redirect('/login'); });
 
 // ---------- admin ----------
-app.get('/', requireLogin, async (req, res) => {
+app.get('/dashboard', requireLogin, async (req, res) => {
   const rv = await reviews.getReviews().catch(() => ({ configured: false }));
   const me = isOwner(req) ? null : store.getUser(req.user.id);
-  html(res, views.dashboard({ company, orders: visibleOrders(req), team: isOwner(req) ? store.listUsers() : [me].filter(Boolean), flash: takeFlash(req), filter: req.query.status || '', year: req.query.year, settings: store.getSettings(), reviews: rv }));
+  html(res, views.dashboard({ company, orders: visibleOrders(req), team: isOwner(req) ? store.listUsers() : [me].filter(Boolean), flash: takeFlash(req), year: req.query.year, settings: store.getSettings(), reviews: rv }));
+});
+
+app.get('/', requireLogin, (req, res) => {
+  html(res, views.documentsPage({ company, orders: visibleOrders(req), flash: takeFlash(req), filter: req.query.status || '' }));
 });
 
 app.get('/leads', requireLogin, (req, res) => html(res, views.comingSoon({
