@@ -62,7 +62,7 @@ function safeEqual(a, b) {
 }
 
 const ORDER_FIELDS = [
-  'number', 'date', 'contractDate', 'projectName',
+  'number', 'date', 'contractDate', 'projectName', 'copyFor',
   'ownerName', 'owner2Name', 'ownerAddress', 'ownerCityStateZip', 'ownerPhone', 'ownerFax', 'ownerEmail',
   'subcontractors', 'description', 'priceDirection', 'amount', 'timeDirection', 'days',
 ];
@@ -77,6 +77,7 @@ function readOrderForm(body) {
   if (!['increase', 'decrease', 'none'].includes(o.priceDirection)) o.priceDirection = 'increase';
   if (!['extend', 'reduce', 'none'].includes(o.timeDirection)) o.timeDirection = 'none';
   if (!['yes', 'no'].includes(o.subcontractors)) o.subcontractors = '';
+  if (!['owner', 'architect', 'contractor', 'field', 'other'].includes(o.copyFor)) o.copyFor = '';
   return o;
 }
 
@@ -160,7 +161,7 @@ app.get('/', requireAdmin, (req, res) => {
 
 app.get('/orders/new', requireAdmin, (req, res) => {
   const order = {
-    number: store.peekNextNumber(), date: f.todayISO(), priceDirection: 'increase', timeDirection: 'none', subcontractors: 'no',
+    number: store.peekNextNumber(), date: f.todayISO(), copyFor: 'owner', priceDirection: 'increase', timeDirection: 'none', subcontractors: 'no',
   };
   html(res, views.orderForm({ company, order, isNew: true, pastCustomers: pastCustomers() }));
 });
