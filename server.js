@@ -42,7 +42,10 @@ app.use(cookieSession({
   sameSite: 'lax',
   httpOnly: true,
 }));
-app.use(express.static(path.join(__dirname, 'public'), { maxAge: '1h' }));
+// Versioned links (?v=…) can be cached long; the version changes with every update.
+app.use(express.static(path.join(__dirname, 'public'), {
+  setHeaders: (res, file) => res.setHeader('Cache-Control', /\.(css|js)$/.test(file) ? 'public, max-age=31536000, immutable' : 'public, max-age=3600'),
+}));
 app.use('/fonts', express.static(path.join(__dirname, 'assets', 'fonts'), { maxAge: '7d' }));
 
 // ---------- helpers ----------
