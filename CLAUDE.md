@@ -26,7 +26,7 @@ The owner works mostly from an **iPad in Safari** and is not a developer. Explai
 - PDFs are built with pdfkit, using Inter Tight fonts from `assets/fonts` under the OFL license. Lato is no longer used.
 - Email goes through Gmail SMTP with an App Password (`lib/notify.js`).
 - **No texting at all.** The owner decided against Twilio and also against the "Text it from my phone" link, and both were removed. Documents go by email; the detail page also has a **Copy** button for the signing link.
-- Google reviews tile (`lib/reviews.js`) uses the Places API (New) with `GOOGLE_PLACES_API_KEY` (an env var) and a Place ID entered in Settings. It's cached for 6 hours and keeps one snapshot per day to show monthly and yearly gains. The business wasn't found by name in a search, so it may be a service-area listing.
+- Google reviews tile (`lib/reviews.js`) uses the Places API (New) with `GOOGLE_PLACES_API_KEY` (an env var) and a Place ID entered in Settings. It's cached for 6 hours and keeps one snapshot per day to show monthly and yearly gains. It was connected in November 2026 with the key restricted to Places API (New), and showed 5.0 stars and 7 reviews.
 - Renewal reminder emails (`lib/reminders.js`) are checked hourly inside the app. They go out 60, 30, 7 and 1 days before, on the day, and once if lapsed.
 
 ## Files
@@ -96,7 +96,5 @@ The owner works mostly from an **iPad in Safari** and is not a developer. Explai
 - Check PDFs visually with `pdftoppm`.
 
 ## Open to-dos
-- **Google reviews:** create a Google Cloud API key for the Places API (New) and add it as `GOOGLE_PLACES_API_KEY` in Render. Then enter the Place ID in Settings.
 - **Domain:** the owner owns onyxgeneralbuilding.com, a candidate for `hub.` as a custom domain.
-- **Domain:** optionally add a custom domain, e.g. `hub.onyxgeneralbuilding.com`.
 - **Workers' comp renewal:** due 2027-01-26. Update the certificate and dates when it renews.

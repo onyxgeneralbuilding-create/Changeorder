@@ -201,7 +201,7 @@ input[type=radio] { accent-color: var(--navy); }
   border-radius: 0; padding: 1.2rem 1.4rem 2rem; margin: 0; position: relative;
 }
 .card.pick:first-child { border-left: 0; padding-left: 0; }
-.card.pick::after { content: '↗'; position: absolute; top: 1.1rem; right: 1.2rem; font-size: 1.4rem; }
+.card.pick::after { content: '\2197\FE0E'; position: absolute; top: 1.1rem; right: 1.2rem; font-size: 1.4rem; }
 .card.pick:hover { background: #ebebeb; }
 .card.pick h2 { margin-top: 3rem; font-size: 1.7rem; letter-spacing: -0.035em; border: 0; padding: 0; }
 
@@ -226,7 +226,7 @@ input[type=radio] { accent-color: var(--navy); }
 .stat-sub { font-size: .84rem; color: var(--muted); }
 .stat.total .stat-num { color: var(--navy); font-weight: 500; }
 .stat.total .stat-label { color: var(--navy); }
-a.stat::after { content: '↗'; position: absolute; top: .8rem; right: 1rem; font-size: 1rem; color: var(--muted); }
+a.stat::after { content: '\2197\FE0E'; position: absolute; top: .8rem; right: 1rem; font-size: 1rem; color: var(--muted); }
 a.stat:hover { background: #ebebeb; color: inherit; }
 a.stat:hover::after { color: var(--ink); }
 
