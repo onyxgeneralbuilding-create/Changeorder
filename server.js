@@ -9,6 +9,7 @@ const store = require('./lib/store');
 const views = require('./lib/views');
 const notify = require('./lib/notify');
 const reminders = require('./lib/reminders');
+const reviews = require('./lib/reviews');
 const f = require('./lib/format');
 const { buildPdf } = require('./lib/pdf');
 const { buildContractPdf } = require('./lib/pdf-contract');
@@ -239,8 +240,9 @@ app.post('/login', (req, res) => {
 app.post('/logout', (req, res) => { req.session = null; res.redirect('/login'); });
 
 // ---------- admin ----------
-app.get('/', requireAdmin, (req, res) => {
-  html(res, views.dashboard({ company, orders: store.listOrders(), flash: takeFlash(req), filter: req.query.status || '', year: req.query.year, settings: store.getSettings() }));
+app.get('/', requireAdmin, async (req, res) => {
+  const rv = await reviews.getReviews().catch(() => ({ configured: false }));
+  html(res, views.dashboard({ company, orders: store.listOrders(), flash: takeFlash(req), filter: req.query.status || '', year: req.query.year, settings: store.getSettings(), reviews: rv }));
 });
 
 app.get('/new', requireAdmin, (req, res) => html(res, views.newChooser({ company })));
@@ -423,6 +425,14 @@ app.get('/settings', requireAdmin, (req, res) => {
   }));
 });
 
+app.post('/settings/refresh-reviews', requireAdmin, async (req, res) => {
+  const rv = await reviews.getReviews({ force: true });
+  if (!rv.configured) setFlash(req, 'Add your Google Place ID in Settings and GOOGLE_PLACES_API_KEY in Render first.', 'error');
+  else if (rv.error) setFlash(req, `Google reviews: ${rv.error}`, 'error');
+  else setFlash(req, `Google reviews updated: ${rv.rating ?? '—'} stars, ${rv.count} reviews${rv.name ? ` (${rv.name})` : ''}.`);
+  res.redirect('/settings#google');
+});
+
 app.post('/settings/test-reminder', requireAdmin, async (req, res) => {
   const to = process.env.NOTIFY_EMAIL || company.email;
   try {
@@ -446,6 +456,7 @@ app.post('/settings', requireAdmin, (req, res) => {
     wcOption: ['A', 'B'].includes(str('wcOption')) ? str('wcOption') : 'B',
     salesmanName: str('salesmanName'),
     salesmanReg: str('salesmanReg'),
+    googlePlaceId: str('googlePlaceId').replace(/^place_id:/, ''),
     cglExpires: /^\d{4}-\d{2}-\d{2}$/.test(str('cglExpires')) ? str('cglExpires') : '',
     wcExpires: /^\d{4}-\d{2}-\d{2}$/.test(str('wcExpires')) ? str('wcExpires') : '',
     licenseExpires: /^\d{4}-\d{2}-\d{2}$/.test(str('licenseExpires')) ? str('licenseExpires') : '',

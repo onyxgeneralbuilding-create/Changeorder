@@ -25,6 +25,7 @@ The owner works mostly from an **iPad in Safari** and is not a developer. Explai
 - Data is a JSON file store (`lib/store.js`). `DATA_DIR` sets its location; on Render that's `/var/data` on a persistent disk.
 - PDFs are built with pdfkit, using Lato fonts from `assets/fonts` under the OFL license.
 - Email goes through Gmail SMTP with an App Password (`lib/notify.js`). SMS goes through the Twilio REST API, which is **not configured yet**.
+- Google reviews tile (`lib/reviews.js`) uses the Places API (New) with `GOOGLE_PLACES_API_KEY` (an env var) and a Place ID entered in Settings. It's cached for 6 hours and keeps one snapshot per day to show monthly and yearly gains. The business wasn't found by name in a search, so it may be a service-area listing.
 - Renewal reminder emails (`lib/reminders.js`) are checked hourly inside the app. They go out 60, 30, 7 and 1 days before, on the day, and once if lapsed.
 
 ## Files
@@ -84,6 +85,8 @@ The owner works mostly from an **iPad in Safari** and is not a developer. Explai
 - Check PDFs visually with `pdftoppm`.
 
 ## Open to-dos
+- **Google reviews:** create a Google Cloud API key for the Places API (New) and add it as `GOOGLE_PLACES_API_KEY` in Render. Then enter the Place ID in Settings.
+- **Domain:** the owner owns onyxgeneralbuilding.com, a candidate for `hub.` as a custom domain.
 - **Texting:** set up Twilio. It needs A2P 10DLC registration. Until then, use the "Text it from my phone" link.
 - **Render plan:** confirm the service is on Starter with the `/var/data` disk and `DATA_DIR` set.
 - **Domain:** optionally add a custom domain, e.g. `hub.onyxgeneralbuilding.com`.
