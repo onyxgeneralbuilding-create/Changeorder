@@ -9,6 +9,7 @@ const store = require('./lib/store');
 const views = require('./lib/views');
 const notify = require('./lib/notify');
 const reminders = require('./lib/reminders');
+const ctx = require('./lib/context');
 const reviews = require('./lib/reviews');
 const f = require('./lib/format');
 const { buildPdf } = require('./lib/pdf');
@@ -45,6 +46,19 @@ app.use(cookieSession({
   httpOnly: true,
 }));
 // Versioned links (?v=…) can be cached long; the version changes with every update.
+// Who is logged in: the owner (ADMIN_PASSWORD) or a team member.
+app.use((req, res, next) => {
+  let user = null;
+  if (req.session && req.session.admin) {
+    user = { id: 'owner', role: 'owner', name: 'Owner', email: process.env.NOTIFY_EMAIL || company.email };
+  } else if (req.session && req.session.userId) {
+    const u = store.getUser(req.session.userId);
+    if (u) user = { id: u.id, role: 'member', name: u.name, email: u.email };
+    else req.session.userId = null;
+  }
+  req.user = user;
+  ctx.run({ user }, next);
+});
 app.use(express.static(path.join(__dirname, 'public'), {
   setHeaders: (res, file) => res.setHeader('Cache-Control', /\.(css|js)$/.test(file) ? 'public, max-age=31536000, immutable' : 'public, max-age=3600'),
 }));
@@ -80,10 +94,20 @@ function insuranceAttachment(order) {
 }
 const buildDoc = (order) => (isContract(order) ? buildContractPdf(order, company, contractSettings()) : buildPdf(order, company));
 
-function requireAdmin(req, res, next) {
-  if (req.session && req.session.admin) return next();
+function requireLogin(req, res, next) {
+  if (req.user) return next();
   return res.redirect('/login');
 }
+function requireOwner(req, res, next) {
+  if (req.user && req.user.role === 'owner') return next();
+  if (req.user) return res.redirect('/');
+  return res.redirect('/login');
+}
+const isOwner = (req) => Boolean(req.user && req.user.role === 'owner');
+// Team members only see the documents they created.
+const canSee = (req, o) => isOwner(req) || (o && o.createdBy === req.user.id);
+const visibleOrders = (req) => store.listOrders().filter((o) => canSee(req, o));
+const creator = (req) => (isOwner(req) ? {} : { createdBy: req.user.id, createdByName: req.user.name });
 
 function safeEqual(a, b) {
   const ha = crypto.createHash('sha256').update(String(a)).digest();
@@ -175,10 +199,10 @@ function contractWarnings(o) {
   return w;
 }
 
-function pastCustomers() {
+function pastCustomers(req) {
   const seen = new Set();
   const out = [];
-  store.listOrders().forEach((o) => {
+  visibleOrders(req).forEach((o) => {
     const key = `${o.ownerName}|${o.projectName}`.toLowerCase();
     if (seen.has(key)) return;
     seen.add(key);
@@ -230,78 +254,96 @@ app.get('/healthz', (req, res) => res.type('text').send('ok'));
 
 // ---------- auth ----------
 app.get('/login', (req, res) => html(res, views.login({ company })));
+// Slow down password guessing: 10 failed tries per address per 15 minutes.
+const failures = new Map();
 app.post('/login', (req, res) => {
-  if (ADMIN_PASSWORD && safeEqual(req.body.password || '', ADMIN_PASSWORD)) {
+  const key = req.ip;
+  const rec = failures.get(key) || { n: 0, at: Date.now() };
+  if (Date.now() - rec.at > 15 * 60 * 1000) { rec.n = 0; rec.at = Date.now(); }
+  if (rec.n >= 10) return html(res, views.login({ company, error: 'Too many tries. Wait 15 minutes and try again.' }), 429);
+  const username = String(req.body.username || '').trim();
+  const password = String(req.body.password || '');
+  const member = username ? store.getUserByUsername(username) : null;
+  if (member && store.checkPassword(member, password)) {
+    failures.delete(key);
+    req.session.admin = false;
+    req.session.userId = member.id;
+    return res.redirect('/');
+  }
+  if (!member && ADMIN_PASSWORD && safeEqual(password, ADMIN_PASSWORD)) {
+    failures.delete(key);
+    req.session.userId = null;
     req.session.admin = true;
     return res.redirect('/');
   }
-  return html(res, views.login({ company, error: ADMIN_PASSWORD ? 'Wrong password.' : 'Set ADMIN_PASSWORD in the .env file first.' }), 401);
+  rec.n += 1; failures.set(key, rec);
+  return html(res, views.login({ company, username, error: ADMIN_PASSWORD ? 'Wrong username or password.' : 'Set ADMIN_PASSWORD in the .env file first.' }), 401);
 });
 app.post('/logout', (req, res) => { req.session = null; res.redirect('/login'); });
 
 // ---------- admin ----------
-app.get('/', requireAdmin, async (req, res) => {
-  const rv = await reviews.getReviews().catch(() => ({ configured: false }));
-  html(res, views.dashboard({ company, orders: store.listOrders(), flash: takeFlash(req), filter: req.query.status || '', year: req.query.year, settings: store.getSettings(), reviews: rv }));
+app.get('/', requireLogin, async (req, res) => {
+  const rv = isOwner(req) ? await reviews.getReviews().catch(() => ({ configured: false })) : null;
+  html(res, views.dashboard({ company, orders: visibleOrders(req), flash: takeFlash(req), filter: req.query.status || '', year: req.query.year, settings: store.getSettings(), reviews: rv }));
 });
 
-app.get('/leads', requireAdmin, (req, res) => html(res, views.comingSoon({
+app.get('/leads', requireLogin, (req, res) => html(res, views.comingSoon({
   company, active: 'leads', title: 'Leads',
   lead: 'A place to track new customer inquiries from first call to signed contract.',
   items: ['Capture name, phone, address and what they need', 'Follow-up reminders', 'Turn a lead into an estimate or contract in one tap'],
 })));
 
-app.get('/estimates', requireAdmin, (req, res) => html(res, views.comingSoon({
+app.get('/estimates', requireLogin, (req, res) => html(res, views.comingSoon({
   company, active: 'estimates', title: 'Estimates',
   lead: 'Build and send professional estimates, then convert approved ones into contracts.',
   items: ['Line items with materials and labor', 'Send for approval by email', 'Approved estimate → Home Improvement Contract'],
 })));
 
-app.get('/new', requireAdmin, (req, res) => html(res, views.newChooser({ company })));
+app.get('/new', requireLogin, (req, res) => html(res, views.newChooser({ company })));
 
-app.get('/contracts/new', requireAdmin, (req, res) => {
+app.get('/contracts/new', requireLogin, (req, res) => {
   const s = store.getSettings();
   const order = {
     type: 'hic', number: store.peekNextNumber('hic'), date: f.todayISO(), lender: 'none', downPayment: '', financeCharge: 'none',
     changeOrderFee: '20', commencement: s.defaultCommencement || 'Delivery of materials or start of work at the job site',
     salesmanName: s.salesmanName || '', salesmanReg: s.salesmanReg || '', payments: [],
   };
-  html(res, views.contractForm({ company, order, isNew: true, pastCustomers: pastCustomers() }));
+  html(res, views.contractForm({ company, order, isNew: true, pastCustomers: pastCustomers(req) }));
 });
 
-app.post('/contracts', requireAdmin, (req, res) => {
+app.post('/contracts', requireLogin, (req, res) => {
   const fields = readContractForm(req.body);
   const err = validateContract(fields);
-  if (err) { console.log(`New contract not saved: ${err}`); return html(res, views.contractForm({ company, order: fields, isNew: true, pastCustomers: pastCustomers(), error: err }), 400); }
-  const order = store.createOrder(fields);
+  if (err) { console.log(`New contract not saved: ${err}`); return html(res, views.contractForm({ company, order: fields, isNew: true, pastCustomers: pastCustomers(req), error: err }), 400); }
+  const order = store.createOrder({ ...fields, ...creator(req) });
   setFlash(req, `Contract ${order.number} saved. Review it, then send it to the customer.`);
   res.redirect(`/orders/${order.id}`);
 });
 
-app.get('/orders/new', requireAdmin, (req, res) => {
+app.get('/orders/new', requireLogin, (req, res) => {
   const order = {
     number: store.peekNextNumber(), date: f.todayISO(), copyFor: 'owner', priceDirection: 'increase', timeDirection: 'none', subcontractors: 'no',
   };
-  html(res, views.orderForm({ company, order, isNew: true, pastCustomers: pastCustomers() }));
+  html(res, views.orderForm({ company, order, isNew: true, pastCustomers: pastCustomers(req) }));
 });
 
-app.post('/orders', requireAdmin, (req, res) => {
+app.post('/orders', requireLogin, (req, res) => {
   const fields = readOrderForm(req.body);
   const err = validate(fields);
-  if (err) { console.log(`New change order not saved: ${err}`); return html(res, views.orderForm({ company, order: fields, isNew: true, pastCustomers: pastCustomers(), error: err }), 400); }
-  const order = store.createOrder(fields);
+  if (err) { console.log(`New change order not saved: ${err}`); return html(res, views.orderForm({ company, order: fields, isNew: true, pastCustomers: pastCustomers(req), error: err }), 400); }
+  const order = store.createOrder({ ...fields, ...creator(req) });
   setFlash(req, `Change order #${order.number} saved. Review it, then send it to the customer.`);
   res.redirect(`/orders/${order.id}`);
 });
 
 function loadOrder(req, res, next) {
   const order = store.getOrder(req.params.id);
-  if (!order) return html(res, views.notFound({ company }), 404);
+  if (!order || !canSee(req, order)) return html(res, views.notFound({ company }), 404);
   req.order = order;
   next();
 }
 
-app.get('/orders/:id', requireAdmin, loadOrder, (req, res) => {
+app.get('/orders/:id', requireLogin, loadOrder, (req, res) => {
   html(res, views.orderDetail({
     company, order: req.order, settings: store.getSettings(),
     emailReady: notify.emailConfigured(),
@@ -309,19 +351,19 @@ app.get('/orders/:id', requireAdmin, loadOrder, (req, res) => {
   }));
 });
 
-app.get('/orders/:id/edit', requireAdmin, loadOrder, (req, res) => {
+app.get('/orders/:id/edit', requireLogin, loadOrder, (req, res) => {
   if (req.order.signatures?.owner) return res.redirect(`/orders/${req.order.id}`);
   const form = isContract(req.order) ? views.contractForm : views.orderForm;
-  html(res, form({ company, order: req.order, isNew: false, pastCustomers: pastCustomers() }));
+  html(res, form({ company, order: req.order, isNew: false, pastCustomers: pastCustomers(req) }));
 });
 
-app.post('/orders/:id', requireAdmin, loadOrder, (req, res) => {
+app.post('/orders/:id', requireLogin, loadOrder, (req, res) => {
   if (req.order.signatures?.owner) { setFlash(req, `Signed ${docWord(req.order)}s can’t be edited.`, 'error'); return res.redirect(`/orders/${req.order.id}`); }
   const contract = isContract(req.order);
   const fields = contract ? readContractForm(req.body) : readOrderForm(req.body);
   const err = contract ? validateContract(fields) : validate(fields);
   const form = contract ? views.contractForm : views.orderForm;
-  if (err) return html(res, form({ company, order: { ...req.order, ...fields }, isNew: false, pastCustomers: pastCustomers(), error: err }), 400);
+  if (err) return html(res, form({ company, order: { ...req.order, ...fields }, isNew: false, pastCustomers: pastCustomers(req), error: err }), 400);
   // Editing invalidates a contractor signature made on the old version.
   const signatures = { ...(req.order.signatures || {}) };
   delete signatures.contractor;
@@ -331,14 +373,14 @@ app.post('/orders/:id', requireAdmin, loadOrder, (req, res) => {
   res.redirect(`/orders/${req.order.id}`);
 });
 
-app.get('/orders/:id/pdf', requireAdmin, loadOrder, async (req, res, next) => {
+app.get('/orders/:id/pdf', requireLogin, loadOrder, async (req, res, next) => {
   try {
     const buf = await pdfFor(req.order);
     res.type('pdf').set('Content-Disposition', `${req.query.download ? 'attachment' : 'inline'}; filename="${pdfName(req.order)}"`).send(buf);
   } catch (e) { next(e); }
 });
 
-app.post('/orders/:id/duplicate', requireAdmin, loadOrder, (req, res) => {
+app.post('/orders/:id/duplicate', requireLogin, loadOrder, (req, res) => {
   const src = req.order;
   const copy = {};
   if (isContract(src)) {
@@ -351,25 +393,26 @@ app.post('/orders/:id/duplicate', requireAdmin, loadOrder, (req, res) => {
     copy.number = store.peekNextNumber();
   }
   copy.date = f.todayISO();
-  const order = store.createOrder(copy);
+  const order = store.createOrder({ ...copy, ...creator(req) });
   setFlash(req, `Copied into new ${docWord(order)} ${isContract(order) ? '' : '#'}${order.number}. Edit the details before sending.`);
   res.redirect(`/orders/${order.id}/edit`);
 });
 
-app.post('/orders/:id/contractor-sign', requireAdmin, loadOrder, (req, res) => {
+app.post('/orders/:id/contractor-sign', requireOwner, loadOrder, (req, res) => {
   if (applyContractorSignature(req.order)) setFlash(req, 'Signed as contractor.');
   else setFlash(req, 'Save your signature in Settings first.', 'error');
   res.redirect(`/orders/${req.order.id}`);
 });
 
-app.post('/orders/:id/send', requireAdmin, loadOrder, async (req, res) => {
+app.post('/orders/:id/send', requireLogin, loadOrder, async (req, res) => {
   const order = req.order;
   const email = String(req.body.email || '').trim();
   const note = String(req.body.note || '').trim();
   if (!email) { setFlash(req, 'Enter the customer’s email address.', 'error'); return res.redirect(`/orders/${order.id}`); }
 
   const settings = store.getSettings();
-  if (settings.autoSign !== false) applyContractorSignature(order);
+  // The saved contractor signature is the owner's; team members' documents are signed by the owner.
+  if (isOwner(req) && settings.autoSign !== false) applyContractorSignature(order);
 
   const link = signLink(order);
   const results = [];
@@ -410,20 +453,52 @@ app.post('/orders/:id/send', requireAdmin, loadOrder, async (req, res) => {
   res.redirect(`/orders/${order.id}`);
 });
 
-app.post('/orders/:id/delete', requireAdmin, loadOrder, (req, res) => {
+app.post('/orders/:id/delete', requireLogin, loadOrder, (req, res) => {
   store.deleteOrder(req.order.id);
   setFlash(req, `${docTitle(req.order)} deleted.`);
   res.redirect('/');
 });
 
-app.get('/settings', requireAdmin, (req, res) => {
+app.get('/settings', requireOwner, (req, res) => {
   html(res, views.settingsPage({
-    company, settings: store.getSettings(), emailReady: notify.emailConfigured(),
+    company, settings: store.getSettings(), emailReady: notify.emailConfigured(), users: store.listUsers(),
     appUrl: APP_URL, flash: takeFlash(req),
   }));
 });
 
-app.post('/settings/refresh-reviews', requireAdmin, async (req, res) => {
+// ---------- team ----------
+app.post('/settings/users', requireOwner, (req, res) => {
+  const name = String(req.body.name || '').trim();
+  const username = String(req.body.username || '').trim().toLowerCase();
+  const email = String(req.body.email || '').trim();
+  const password = String(req.body.password || '');
+  let err = null;
+  if (!name) err = 'Enter the person’s name.';
+  else if (!/^[a-z0-9._-]{3,30}$/.test(username)) err = 'Usernames are 3–30 letters or numbers, no spaces.';
+  else if (store.getUserByUsername(username)) err = `The username “${username}” is taken.`;
+  else if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) err = 'That email address doesn’t look right.';
+  else if (password.length < 8) err = 'Passwords need at least 8 characters.';
+  if (err) setFlash(req, err, 'error');
+  else { store.createUser({ name, username, email, password }); setFlash(req, `${name} added. They log in with username “${username}”.`); }
+  res.redirect('/settings#team');
+});
+
+app.post('/settings/users/:uid/password', requireOwner, (req, res) => {
+  const u = store.getUser(req.params.uid);
+  const password = String(req.body.password || '');
+  if (!u) setFlash(req, 'That person wasn’t found.', 'error');
+  else if (password.length < 8) setFlash(req, 'Passwords need at least 8 characters.', 'error');
+  else { store.updateUser(u.id, { password }); setFlash(req, `Password changed for ${u.name}.`); }
+  res.redirect('/settings#team');
+});
+
+app.post('/settings/users/:uid/delete', requireOwner, (req, res) => {
+  const u = store.getUser(req.params.uid);
+  if (u) { store.deleteUser(u.id); setFlash(req, `${u.name} removed. Their documents stay in your list.`); }
+  res.redirect('/settings#team');
+});
+
+app.post('/settings/refresh-reviews', requireOwner, async (req, res) => {
   const rv = await reviews.getReviews({ force: true });
   if (!rv.configured) setFlash(req, 'Add your Google Place ID in Settings and GOOGLE_PLACES_API_KEY in Render first.', 'error');
   else if (rv.error) setFlash(req, `Google reviews: ${rv.error}`, 'error');
@@ -431,7 +506,7 @@ app.post('/settings/refresh-reviews', requireAdmin, async (req, res) => {
   res.redirect('/settings#google');
 });
 
-app.post('/settings/test-reminder', requireAdmin, async (req, res) => {
+app.post('/settings/test-reminder', requireOwner, async (req, res) => {
   const to = process.env.NOTIFY_EMAIL || company.email;
   try {
     const lines = reminders.renewalList(company, store.getSettings()).filter((r) => r.date)
@@ -442,7 +517,7 @@ app.post('/settings/test-reminder', requireAdmin, async (req, res) => {
   res.redirect('/settings#renewals');
 });
 
-app.post('/settings', requireAdmin, async (req, res) => {
+app.post('/settings', requireOwner, async (req, res) => {
   const str = (k) => String(req.body[k] || '').trim();
   const patch = {
     contractorSignerName: str('contractorSignerName'),
@@ -489,7 +564,7 @@ function loadByToken(req, res, next) {
 
 app.get('/s/:token', loadByToken, (req, res) => {
   const o = req.order;
-  if (!req.session.admin && (o.status === 'sent' || o.status === 'draft')) {
+  if (!req.user && (o.status === 'sent' || o.status === 'draft')) {
     store.updateOrder(o.id, { status: 'viewed' });
     store.addEvent(o.id, 'viewed', 'Opened by customer');
   }
@@ -556,13 +631,14 @@ app.post('/s/:token/sign', loadByToken, async (req, res, next) => {
 
     // Make sure the contractor signature is on the final copy if one is saved.
     const fresh = store.getOrder(o.id);
-    if (store.getSettings().autoSign !== false) applyContractorSignature(fresh);
+    if (store.getSettings().autoSign !== false && !fresh.createdBy) applyContractorSignature(fresh);
     const pdf = await freezeSignedPdf(store.getOrder(o.id));
 
     // Email copies (best effort — signing already succeeded).
     if (notify.emailConfigured()) {
       const attach = [{ filename: pdfName(store.getOrder(o.id)), content: pdf }];
-      const notifyTo = process.env.NOTIFY_EMAIL || company.email;
+      const creatorUser = o.createdBy && store.getUser(o.createdBy);
+      const notifyTo = [process.env.NOTIFY_EMAIL || company.email, creatorUser && creatorUser.email].filter(Boolean).join(', ');
       notify.sendEmail({
         to: notifyTo,
         subject: `SIGNED: ${docTitle(o)} – ${o.projectName}`,
@@ -593,7 +669,7 @@ app.post('/s/:token/decline', loadByToken, (req, res) => {
     store.addEvent(o.id, 'declined', `Declined by customer${reason ? `: “${reason}”` : ''}`);
     if (notify.emailConfigured()) {
       notify.sendEmail({
-        to: process.env.NOTIFY_EMAIL || company.email,
+        to: [process.env.NOTIFY_EMAIL || company.email, o.createdBy && store.getUser(o.createdBy)?.email].filter(Boolean).join(', '),
         subject: `DECLINED: ${docTitle(o)} – ${o.projectName}`,
         text: `The customer declined ${docTitle(o)}.${reason ? `\n\nReason: ${reason}` : ''}\n\n${APP_URL}/orders/${o.id}`,
       }).catch(() => {});

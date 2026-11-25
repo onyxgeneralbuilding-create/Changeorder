@@ -284,3 +284,13 @@ a.stat:hover::after { color: var(--ink); }
 .soon-lead { font-size: 1.25rem; line-height: 1.4; letter-spacing: -0.01em; margin: 0 0 1.6rem; }
 .soon-list { list-style: none; padding: 0; margin: 0 0 2rem; border-top: 1px solid var(--rule-strong); }
 .soon-list li { padding: .8rem 0; border-bottom: 1px solid var(--rule); color: var(--ink); }
+
+/* team */
+.who { color: var(--muted); }
+.team { list-style: none; padding: 0; margin: 0 0 1.4rem; border-top: 1px solid var(--rule); }
+.team li { padding: .8rem 0; border-bottom: 1px solid var(--rule); }
+.team details { margin-top: .4rem; }
+.team summary { cursor: pointer; color: var(--muted); font-size: .9rem; }
+.team .form { margin: .6rem 0; }
+.team .form input { max-width: 280px; margin-top: 0 !important; }
+.card h3 { font-size: 1rem; font-weight: 500; margin: 1rem 0 .7rem; }
