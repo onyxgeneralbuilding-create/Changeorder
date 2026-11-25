@@ -221,12 +221,12 @@ function moneyStats(req, yearParam) {
 function contractChoices(req) {
   return visibleOrders(req).filter((o) => o.type === 'hic').map((o) => ({
     id: o.id, number: o.number, projectName: o.projectName, ownerName: o.ownerName, owner2Name: o.owner2Name,
-    ownerAddress: o.ownerAddress, ownerCityStateZip: o.ownerCityStateZip, ownerPhone: o.ownerPhone, ownerFax: o.ownerFax, ownerEmail: o.ownerEmail,
+    ownerAddress: o.ownerAddress, ownerCityStateZip: o.ownerCityStateZip, ownerPhone: o.ownerPhone, ownerEmail: o.ownerEmail,
     contractDate: o.signatures && o.signatures.owner ? o.signatures.owner.at.slice(0, 10) : o.date,
   }));
 }
 
-const CUSTOMER_KEYS = ['ownerName', 'owner2Name', 'ownerAddress', 'ownerCityStateZip', 'ownerPhone', 'ownerFax', 'ownerEmail', 'workAddress', 'workCityStateZip'];
+const CUSTOMER_KEYS = ['ownerName', 'owner2Name', 'ownerAddress', 'ownerCityStateZip', 'ownerPhone', 'ownerEmail', 'workAddress', 'workCityStateZip'];
 const canSeeCustomer = (req, c) => c && (isOwner(req) || c.createdBy === req.user.id);
 // Saved customers this person can pick from (shape matches the form field names).
 function pastCustomers(req) {
