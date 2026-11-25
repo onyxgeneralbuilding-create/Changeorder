@@ -8,6 +8,7 @@ const cookieSession = require('cookie-session');
 const store = require('./lib/store');
 const views = require('./lib/views');
 const notify = require('./lib/notify');
+const reminders = require('./lib/reminders');
 const f = require('./lib/format');
 const { buildPdf } = require('./lib/pdf');
 const { buildContractPdf } = require('./lib/pdf-contract');
@@ -422,6 +423,17 @@ app.get('/settings', requireAdmin, (req, res) => {
   }));
 });
 
+app.post('/settings/test-reminder', requireAdmin, async (req, res) => {
+  const to = process.env.NOTIFY_EMAIL || company.email;
+  try {
+    const lines = reminders.renewalList(company, store.getSettings()).filter((r) => r.date)
+      .map((r) => `• ${r.label}: ${f.date(r.date)} (${reminders.daysLeft(r.date)} days left)`);
+    await notify.sendEmail({ to, subject: 'Test: Onyx Contracts Hub renewal reminders', text: `Renewal reminders are working. You'll get emails 60, 30, 7 and 1 days before each date, on the day, and if one lapses.\n\n${lines.join('\n')}` });
+    setFlash(req, `Test reminder sent to ${to}.`);
+  } catch (e) { setFlash(req, `Couldn’t send the test: ${e.message}`, 'error'); }
+  res.redirect('/settings#renewals');
+});
+
 app.post('/settings', requireAdmin, (req, res) => {
   const str = (k) => String(req.body[k] || '').trim();
   const patch = {
@@ -575,7 +587,8 @@ app.use((err, req, res, _next) => {
 });
 
 if (require.main === module) {
-  app.listen(PORT, () => console.log(`Change orders app running at ${APP_URL} (port ${PORT})`));
+  app.listen(PORT, () => console.log(`Onyx Contracts Hub running at ${APP_URL} (port ${PORT})`));
+  reminders.startReminders(company, APP_URL);
 }
 
 module.exports = app;
