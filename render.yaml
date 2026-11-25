@@ -29,7 +29,9 @@ services:
       - key: SMTP_PASS
         sync: false          # your Gmail app password
       - key: EMAIL_FROM
-        value: "Onyx General Building, Inc. <onyxgeneralbuilding@gmail.com>"
+        value: "onyxgeneralbuilding@gmail.com"
+      - key: EMAIL_FROM_NAME
+        value: "Onyx General Building"
       - key: NOTIFY_EMAIL
         value: onyxgeneralbuilding@gmail.com
       - key: TWILIO_ACCOUNT_SID

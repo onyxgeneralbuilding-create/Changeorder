@@ -80,7 +80,7 @@ The owner works mostly from an **iPad in Safari** and is not a developer. Explai
   - Memory is limited to 512 MB, so keep PDF generation light. The contract page text sizes are fixed in `FIXED_SCALE` for this reason. Measuring them on every request crashed the server.
 - **Environment variables:**
   - `ADMIN_PASSWORD` and `SESSION_SECRET`.
-  - Email: `SMTP_*`. `SMTP_PASS` is a Gmail App Password.
+  - Email: `SMTP_*`. `SMTP_PASS` is a Gmail App Password. The sender name comes from `EMAIL_FROM_NAME` (default "Onyx General Building"). It is built as {name, address} because a comma in "…, Inc." once made Gmail show the sender as just "Inc.".
   - `NOTIFY_EMAIL`.
   - Texting: `TWILIO_*`.
   - `APP_URL` is optional; Render sets `RENDER_EXTERNAL_URL` automatically.
