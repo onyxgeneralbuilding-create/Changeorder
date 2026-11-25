@@ -59,7 +59,7 @@ main { max-width: 1240px; margin: 0 auto; padding: 2.2rem max(20px, env(safe-are
 .public main { max-width: 760px; }
 .foot {
   max-width: 1240px; margin: 0 auto; padding: 1.6rem 20px 2.4rem; border-top: 1px solid var(--rule);
-  color: var(--muted); font-size: .74rem; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--muted); font-size: .85rem;
 }
 
 /* ---------- surfaces ---------- */
