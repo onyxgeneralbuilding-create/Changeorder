@@ -236,7 +236,7 @@ app.post('/logout', (req, res) => { req.session = null; res.redirect('/login'); 
 
 // ---------- admin ----------
 app.get('/', requireAdmin, (req, res) => {
-  html(res, views.dashboard({ company, orders: store.listOrders(), flash: takeFlash(req), filter: req.query.status || '' }));
+  html(res, views.dashboard({ company, orders: store.listOrders(), flash: takeFlash(req), filter: req.query.status || '', year: req.query.year }));
 });
 
 app.get('/new', requireAdmin, (req, res) => html(res, views.newChooser({ company })));

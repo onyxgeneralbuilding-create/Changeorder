@@ -174,3 +174,24 @@ table.list { width: 100%; border-collapse: collapse; }
   .payrow { grid-template-columns: 1fr 1fr; }
   .payrow label:nth-child(2) { grid-column: 1 / -1; order: -1; }
 }
+
+/* dashboard year totals */
+.stats-wrap { margin: .4rem 0 1.1rem; }
+.stats-title { margin: .4rem 0; }
+.yearpick { display: flex; gap: .35rem; flex-wrap: wrap; }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .8rem; margin-top: .5rem; }
+.stat { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: .9rem 1rem; display: flex; flex-direction: column; gap: .15rem; min-width: 0; }
+.stat-label { font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 700; }
+.stat-num { font-size: 1.6rem; font-weight: 700; color: var(--navy); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.stat-sub { font-size: .85rem; color: var(--muted); }
+.stat.total { background: var(--navy); border-color: var(--navy); }
+.stat.total .stat-label, .stat.total .stat-sub { color: #c8d3e3; }
+.stat.total .stat-num { color: #fff; }
+@media (max-width: 900px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 420px) { .stat-num { font-size: 1.3rem; } }
+.tablescroll { overflow-x: auto; }
+@media (max-width: 640px) {
+  .list th:nth-child(4), .list td:nth-child(4) { white-space: nowrap; }
+  .list td { font-size: .92rem; }
+  .topbar nav { gap: .7rem; }
+}
