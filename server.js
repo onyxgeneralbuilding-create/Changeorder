@@ -10,6 +10,7 @@ const views = require('./lib/views');
 const notify = require('./lib/notify');
 const f = require('./lib/format');
 const { buildPdf } = require('./lib/pdf');
+const { buildContractPdf } = require('./lib/pdf-contract');
 
 const company = require('./config/company.json');
 const PORT = Number(process.env.PORT || 3000);
@@ -49,6 +50,30 @@ const html = (res, body, status = 200) => res.status(status).type('html').send(b
 const signLink = (o) => `${APP_URL}/s/${o.token}`;
 const takeFlash = (req) => { const fl = req.session.flash; req.session.flash = null; return fl; };
 const setFlash = (req, text, type = 'ok') => { req.session.flash = { text, type }; };
+const isContract = (o) => o && o.type === 'hic';
+// "Change Order #1001" or "Home Improvement Contract HIC-1001"
+const docTitle = (o) => (isContract(o) ? `Home Improvement Contract ${o.number}` : `Change Order #${o.number}`);
+const docWord = (o) => (isContract(o) ? 'contract' : 'change order');
+const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+const initialsOf = (name) => String(name || '').split(/\s+/).filter(Boolean).map((w) => w[0].toUpperCase()).join('').slice(0, 4);
+
+function contractSettings() {
+  const s = store.getSettings();
+  return {
+    contractorInitials: s.contractorInitials || initialsOf(s.contractorSignerName),
+    insuranceCompany: s.insuranceCompany || company.insurance?.cglCompany || '',
+    insurancePhone: s.insurancePhone || company.insurance?.phone || '',
+    cglOption: s.cglOption || 'B',
+    wcOption: s.wcOption || 'B',
+  };
+}
+// Certificate of insurance goes out with every contract email.
+function insuranceAttachment(order) {
+  const file = company.insurance?.certificateFile && path.join(__dirname, company.insurance.certificateFile);
+  if (!isContract(order) || !file || !fs.existsSync(file)) return [];
+  return [{ filename: 'Onyx-Certificate-of-Insurance.pdf', path: file }];
+}
+const buildDoc = (order) => (isContract(order) ? buildContractPdf(order, company, contractSettings()) : buildPdf(order, company));
 
 function requireAdmin(req, res, next) {
   if (req.session && req.session.admin) return next();
@@ -92,6 +117,59 @@ function validate(o) {
   return null;
 }
 
+// ---------- home improvement contracts ----------
+const CONTRACT_FIELDS = [
+  'number', 'date', 'projectName',
+  'ownerName', 'owner2Name', 'ownerAddress', 'ownerCityStateZip', 'ownerPhone', 'ownerFax', 'ownerEmail',
+  'workAddress', 'workCityStateZip', 'lender', 'description', 'commencement', 'startDate', 'completionDate',
+  'contractPrice', 'downPayment', 'financeCharge', 'allowances', 'changeOrderFee', 'salesmanName', 'salesmanReg',
+];
+const asList = (v) => (Array.isArray(v) ? v : v === undefined ? [] : [v]);
+
+function readContractForm(body) {
+  const o = { type: 'hic' };
+  CONTRACT_FIELDS.forEach((k) => { o[k] = String(body[k] ?? '').trim(); });
+  o.description = String(body.description ?? '').replace(/\r\n/g, '\n').trim();
+  const money = (v) => { const n = f.parseMoney(v); return n === null ? '' : String(Math.abs(n)); };
+  o.contractPrice = money(o.contractPrice);
+  o.downPayment = /^none$/i.test(o.downPayment) || !o.downPayment ? 'none' : money(o.downPayment);
+  o.financeCharge = /^none$/i.test(o.financeCharge) || !o.financeCharge ? 'none' : money(o.financeCharge);
+  o.changeOrderFee = String(parseFloat(o.changeOrderFee) || 20);
+  if (!o.lender) o.lender = 'none';
+  const amts = asList(body.payAmount), descs = asList(body.payDesc), dates = asList(body.payDate);
+  o.payments = amts.map((a, i) => ({ amount: money(a), description: String(descs[i] || '').trim(), date: String(dates[i] || '').trim() }))
+    .filter((p) => p.amount || p.description || p.date);
+  if (!o.projectName) o.projectName = o.workAddress || o.ownerName;
+  return o;
+}
+
+function validateContract(o) {
+  if (!o.ownerName) return 'Please enter the property owner’s name.';
+  if (!o.workAddress) return 'Please enter the address where the work will be performed.';
+  if (!o.description) return 'Please describe the project and significant materials.';
+  if (!Number(o.contractPrice)) return 'Please enter the contract price.';
+  if (o.ownerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(o.ownerEmail)) return 'The owner’s email address doesn’t look right. Please check it.';
+  const price = Number(o.contractPrice);
+  const down = o.downPayment === 'none' ? 0 : Number(o.downPayment) || 0;
+  const maxDown = Math.min(1000, price * 0.1);
+  if (down > maxDown + 0.001) return `The down payment can’t be more than ${f.money(maxDown)} (the lesser of $1,000 or 10% of the contract price).`;
+  if (o.payments.some((p) => !p.amount || !p.description)) return 'Each progress payment needs an amount and a description of the work.';
+  return null;
+}
+
+// Warnings (not errors) shown on the contract page.
+function contractWarnings(o) {
+  if (!isContract(o)) return [];
+  const w = [];
+  const price = Number(o.contractPrice) || 0;
+  const down = o.downPayment === 'none' ? 0 : Number(o.downPayment) || 0;
+  const sum = (o.payments || []).reduce((a, p) => a + (Number(p.amount) || 0), 0) + down;
+  if (Math.abs(sum - price) > 0.009) w.push(`Down payment plus progress payments add up to ${f.money(sum)}, but the contract price is ${f.money(price)}.`);
+  if (!(o.payments || []).length) w.push('No schedule of progress payments has been entered.');
+  if (!o.startDate || !o.completionDate) w.push('The approximate start and completion dates are missing.');
+  return w;
+}
+
 function pastCustomers() {
   const seen = new Set();
   const out = [];
@@ -100,7 +178,8 @@ function pastCustomers() {
     if (seen.has(key)) return;
     seen.add(key);
     out.push({
-      projectName: o.projectName, contractDate: o.contractDate,
+      projectName: o.projectName, contractDate: isContract(o) ? (o.signatures?.owner ? o.signatures.owner.at.slice(0, 10) : o.date) : o.contractDate,
+      workAddress: o.workAddress, workCityStateZip: o.workCityStateZip,
       ownerName: o.ownerName, owner2Name: o.owner2Name, ownerAddress: o.ownerAddress,
       ownerCityStateZip: o.ownerCityStateZip, ownerPhone: o.ownerPhone, ownerFax: o.ownerFax, ownerEmail: o.ownerEmail,
     });
@@ -113,12 +192,13 @@ async function pdfFor(order) {
   if (order.signedPdf && fs.existsSync(store.pdfPath(order.signedPdf))) {
     return fs.readFileSync(store.pdfPath(order.signedPdf));
   }
-  return buildPdf(order, company);
+  return buildDoc(order);
 }
 
 function pdfName(order) {
   const proj = (order.projectName || '').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-');
-  return `Change-Order-${order.number}${proj ? `-${proj}` : ''}${order.signatures?.owner ? '-SIGNED' : ''}.pdf`;
+  const base = isContract(order) ? `Home-Improvement-Contract-${order.number}` : `Change-Order-${order.number}`;
+  return `${base}${proj ? `-${proj}` : ''}${order.signatures?.owner ? '-SIGNED' : ''}.pdf`;
 }
 
 function applyContractorSignature(order, method = 'stored') {
@@ -134,7 +214,7 @@ function applyContractorSignature(order, method = 'stored') {
 }
 
 async function freezeSignedPdf(order) {
-  const buf = await buildPdf(order, company);
+  const buf = await buildDoc(order);
   const name = `${order.id}-signed-${Date.now()}.pdf`;
   fs.writeFileSync(store.pdfPath(name), buf);
   store.updateOrder(order.id, { signedPdf: name });
@@ -157,6 +237,27 @@ app.post('/logout', (req, res) => { req.session = null; res.redirect('/login'); 
 // ---------- admin ----------
 app.get('/', requireAdmin, (req, res) => {
   html(res, views.dashboard({ company, orders: store.listOrders(), flash: takeFlash(req), filter: req.query.status || '' }));
+});
+
+app.get('/new', requireAdmin, (req, res) => html(res, views.newChooser({ company })));
+
+app.get('/contracts/new', requireAdmin, (req, res) => {
+  const s = store.getSettings();
+  const order = {
+    type: 'hic', number: store.peekNextNumber('hic'), date: f.todayISO(), lender: 'none', downPayment: '', financeCharge: 'none',
+    changeOrderFee: '20', commencement: s.defaultCommencement || 'Delivery of materials or start of work at the job site',
+    salesmanName: s.salesmanName || '', salesmanReg: s.salesmanReg || '', payments: [],
+  };
+  html(res, views.contractForm({ company, order, isNew: true, pastCustomers: pastCustomers() }));
+});
+
+app.post('/contracts', requireAdmin, (req, res) => {
+  const fields = readContractForm(req.body);
+  const err = validateContract(fields);
+  if (err) { console.log(`New contract not saved: ${err}`); return html(res, views.contractForm({ company, order: fields, isNew: true, pastCustomers: pastCustomers(), error: err }), 400); }
+  const order = store.createOrder(fields);
+  setFlash(req, `Contract ${order.number} saved. Review it, then send it to the customer.`);
+  res.redirect(`/orders/${order.id}`);
 });
 
 app.get('/orders/new', requireAdmin, (req, res) => {
@@ -186,25 +287,28 @@ app.get('/orders/:id', requireAdmin, loadOrder, (req, res) => {
   html(res, views.orderDetail({
     company, order: req.order, settings: store.getSettings(),
     emailReady: notify.emailConfigured(), smsReady: notify.smsConfigured(),
-    signLink: signLink(req.order), flash: takeFlash(req),
+    signLink: signLink(req.order), flash: takeFlash(req), warnings: contractWarnings(req.order),
   }));
 });
 
 app.get('/orders/:id/edit', requireAdmin, loadOrder, (req, res) => {
   if (req.order.signatures?.owner) return res.redirect(`/orders/${req.order.id}`);
-  html(res, views.orderForm({ company, order: req.order, isNew: false, pastCustomers: pastCustomers() }));
+  const form = isContract(req.order) ? views.contractForm : views.orderForm;
+  html(res, form({ company, order: req.order, isNew: false, pastCustomers: pastCustomers() }));
 });
 
 app.post('/orders/:id', requireAdmin, loadOrder, (req, res) => {
-  if (req.order.signatures?.owner) { setFlash(req, 'Signed change orders can’t be edited.', 'error'); return res.redirect(`/orders/${req.order.id}`); }
-  const fields = readOrderForm(req.body);
-  const err = validate(fields);
-  if (err) return html(res, views.orderForm({ company, order: { ...req.order, ...fields }, isNew: false, pastCustomers: pastCustomers(), error: err }), 400);
+  if (req.order.signatures?.owner) { setFlash(req, `Signed ${docWord(req.order)}s can’t be edited.`, 'error'); return res.redirect(`/orders/${req.order.id}`); }
+  const contract = isContract(req.order);
+  const fields = contract ? readContractForm(req.body) : readOrderForm(req.body);
+  const err = contract ? validateContract(fields) : validate(fields);
+  const form = contract ? views.contractForm : views.orderForm;
+  if (err) return html(res, form({ company, order: { ...req.order, ...fields }, isNew: false, pastCustomers: pastCustomers(), error: err }), 400);
   // Editing invalidates a contractor signature made on the old version.
   const signatures = { ...(req.order.signatures || {}) };
   delete signatures.contractor;
   store.updateOrder(req.order.id, { ...fields, signatures });
-  store.addEvent(req.order.id, 'edited', 'Change order edited');
+  store.addEvent(req.order.id, 'edited', `${cap(docWord(req.order))} edited`);
   setFlash(req, 'Changes saved.');
   res.redirect(`/orders/${req.order.id}`);
 });
@@ -219,11 +323,18 @@ app.get('/orders/:id/pdf', requireAdmin, loadOrder, async (req, res, next) => {
 app.post('/orders/:id/duplicate', requireAdmin, loadOrder, (req, res) => {
   const src = req.order;
   const copy = {};
-  ORDER_FIELDS.forEach((k) => { copy[k] = src[k]; });
-  copy.number = store.peekNextNumber();
+  if (isContract(src)) {
+    CONTRACT_FIELDS.forEach((k) => { copy[k] = src[k]; });
+    copy.type = 'hic';
+    copy.payments = (src.payments || []).map((p) => ({ ...p }));
+    copy.number = store.peekNextNumber('hic');
+  } else {
+    ORDER_FIELDS.forEach((k) => { copy[k] = src[k]; });
+    copy.number = store.peekNextNumber();
+  }
   copy.date = f.todayISO();
   const order = store.createOrder(copy);
-  setFlash(req, `Copied into new change order #${order.number}. Edit the details before sending.`);
+  setFlash(req, `Copied into new ${docWord(order)} ${isContract(order) ? '' : '#'}${order.number}. Edit the details before sending.`);
   res.redirect(`/orders/${order.id}/edit`);
 });
 
@@ -251,23 +362,23 @@ app.post('/orders/:id/send', requireAdmin, loadOrder, async (req, res) => {
   if (viaEmail) {
     try {
       if (!email) throw new Error('Enter the customer’s email address.');
-      const pdf = await buildPdf(store.getOrder(order.id), company);
+      const pdf = await buildDoc(store.getOrder(order.id));
       const greeting = `Hi ${order.ownerName.split(' ')[0] || ''},`.replace(' ,', ',');
-      const intro = `${company.name} has sent you Change Order #${order.number} for ${order.projectName} to review and sign.`;
+      const intro = `${company.name} has sent you ${docTitle(order)} for ${order.projectName} to review and sign.`;
       const text = [greeting, '', intro, note && `\n${note}\n`, `Review and sign here: ${link}`, '',
-        'A PDF copy is attached.', '', company.name, company.phone, company.email].filter((x) => x !== false && x !== undefined).join('\n');
+        isContract(order) ? 'The contract and our certificate of insurance are attached.' : 'A PDF copy is attached.', '', company.name, company.phone, company.email].filter((x) => x !== false && x !== undefined).join('\n');
       const htmlBody = `<div style="font-family:Arial,sans-serif;font-size:15px;color:#16202e;max-width:560px">
         <p>${views.esc(greeting)}</p>
         <p>${views.esc(intro)}</p>
         ${note ? `<p style="white-space:pre-wrap">${views.esc(note)}</p>` : ''}
         <p style="margin:24px 0"><a href="${views.esc(link)}" style="background:#082a56;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold">Review &amp; sign</a></p>
-        <p>A PDF copy is attached.</p>
+        <p>${isContract(order) ? 'The contract and our certificate of insurance are attached.' : 'A PDF copy is attached.'}</p>
         <p style="color:#5d6878">${views.esc(company.name)}<br>${views.esc(company.phone)}<br>${views.esc(company.email)}<br>CSLB Lic. #${views.esc(company.license)}</p></div>`;
       await notify.sendEmail({
         to: email,
-        subject: `Change Order #${order.number} – ${order.projectName} – please review & sign`,
+        subject: `${docTitle(order)} – ${order.projectName} – please review & sign`,
         text, html: htmlBody, replyTo: company.email,
-        attachments: [{ filename: pdfName(order), content: pdf }],
+        attachments: [{ filename: pdfName(order), content: pdf }, ...insuranceAttachment(order)],
       });
       store.addEvent(order.id, 'sent_email', `Emailed to ${email}`);
       results.push(`emailed to ${email}`);
@@ -277,7 +388,7 @@ app.post('/orders/:id/send', requireAdmin, loadOrder, async (req, res) => {
   if (viaSms) {
     try {
       if (!phone) throw new Error('Enter the customer’s mobile number.');
-      const body = `${company.name}: Change Order #${order.number} for ${order.projectName} is ready for your review and signature: ${link}${note ? `\n${note}` : ''}`;
+      const body = `${company.name}: ${docTitle(order)} for ${order.projectName} is ready for your review and signature: ${link}${note ? `\n${note}` : ''}`;
       await notify.sendSms({ to: phone, body });
       store.addEvent(order.id, 'sent_sms', `Texted to ${phone}`);
       results.push(`texted to ${phone}`);
@@ -291,13 +402,13 @@ app.post('/orders/:id/send', requireAdmin, loadOrder, async (req, res) => {
   store.updateOrder(order.id, patch);
 
   if (errors.length) setFlash(req, (results.length ? `Sent: ${results.join(', ')}. ` : '') + errors.join(' '), 'error');
-  else setFlash(req, `Change order ${results.join(' and ')}.`);
+  else setFlash(req, `${cap(docWord(order))} ${results.join(' and ')}.`);
   res.redirect(`/orders/${order.id}`);
 });
 
 app.post('/orders/:id/delete', requireAdmin, loadOrder, (req, res) => {
   store.deleteOrder(req.order.id);
-  setFlash(req, `Change order #${req.order.number} deleted.`);
+  setFlash(req, `${docTitle(req.order)} deleted.`);
   res.redirect('/');
 });
 
@@ -309,9 +420,17 @@ app.get('/settings', requireAdmin, (req, res) => {
 });
 
 app.post('/settings', requireAdmin, (req, res) => {
+  const str = (k) => String(req.body[k] || '').trim();
   const patch = {
-    contractorSignerName: String(req.body.contractorSignerName || '').trim(),
+    contractorSignerName: str('contractorSignerName'),
     autoSign: req.body.autoSign === '1',
+    contractorInitials: str('contractorInitials').toUpperCase().slice(0, 4),
+    insuranceCompany: str('insuranceCompany'),
+    insurancePhone: str('insurancePhone'),
+    cglOption: ['A', 'B', 'C', 'D'].includes(str('cglOption')) ? str('cglOption') : 'B',
+    wcOption: ['A', 'B'].includes(str('wcOption')) ? str('wcOption') : 'B',
+    salesmanName: str('salesmanName'),
+    salesmanReg: str('salesmanReg'),
   };
   const sig = String(req.body.signature || '');
   if (sig.startsWith('data:image/png;base64,')) patch.contractorSignature = sig;
@@ -353,12 +472,24 @@ app.post('/s/:token/sign', loadByToken, async (req, res, next) => {
     const image = String(req.body.signature || '');
     const back = (error) => html(res, views.signPage({ company, order: o, token: req.params.token, error }), 400);
 
-    if (o.status === 'declined') return back('This change order was declined.');
+    if (o.status === 'declined') return back(`This ${docWord(o)} was declined.`);
     if (o.signatures?.[who]) return res.redirect(`/s/${req.params.token}`);
     if (who === 'owner2' && !o.signatures?.owner) return back('The first owner must sign first.');
     if (!name) return back('Please type your full name.');
     if (!image.startsWith('data:image/png;base64,') || image.length < 500) return back('Please sign in the box.');
     if (req.body.consent !== '1') return back('Please check the box to agree.');
+
+    // Contract-only: initials, age(s), right to cancel, arbitration choice.
+    let acks = null;
+    if (isContract(o) && who === 'owner') {
+      const initials = String(req.body.initials || '').trim().toUpperCase().replace(/[^A-Z.\- ]/g, '').slice(0, 5);
+      const ages = String(req.body.ages || '').trim().slice(0, 40);
+      const ageNums = (ages.match(/\d+/g) || []).map(Number);
+      if (!initials) return back('Please type your initials.');
+      if (!ageNums.length || ageNums.some((a) => a < 18 || a > 120)) return back('Please enter your age (and the other owner’s age, if any).');
+      if (!['yes', 'no'].includes(req.body.arbitration)) return back('Please choose whether you agree to arbitration.');
+      acks = { initials, ages, rightToCancel: ageNums.some((a) => a >= 65) ? 5 : 3, arbitration: req.body.arbitration === 'yes' };
+    }
 
     // Optional second owner signing at the same time.
     const add2 = who === 'owner' && req.body.addOwner2 === '1';
@@ -373,6 +504,7 @@ app.post('/s/:token/sign', loadByToken, async (req, res, next) => {
     const sig = { name, image, ...meta, email: who === 'owner' ? o.ownerEmail : '' };
     const signatures = { ...(o.signatures || {}), [who]: sig };
     const patch = { signatures, status: 'signed' };
+    if (acks) patch.acks = acks;
     if (who === 'owner2') patch.owner2Name = name;
     if (add2) {
       signatures.owner2 = { name: name2, image: image2, ...meta, email: '' };
@@ -393,8 +525,8 @@ app.post('/s/:token/sign', loadByToken, async (req, res, next) => {
       const notifyTo = process.env.NOTIFY_EMAIL || company.email;
       notify.sendEmail({
         to: notifyTo,
-        subject: `SIGNED: Change Order #${o.number} – ${o.projectName}`,
-        text: `${name} signed Change Order #${o.number} (${o.projectName}) on ${f.dateTime(sig.at)}.\n\n${APP_URL}/orders/${o.id}`,
+        subject: `SIGNED: ${docTitle(o)} – ${o.projectName}`,
+        text: `${name} signed ${docTitle(o)} (${o.projectName}) on ${f.dateTime(sig.at)}.${acks ? `\nRight to cancel: ${acks.rightToCancel}-day. Arbitration: ${acks.arbitration ? 'agreed' : 'not agreed'}.` : ''}\n\n${APP_URL}/orders/${o.id}`,
         attachments: attach,
       }).then(() => store.addEvent(o.id, 'notified', `Signed copy emailed to ${notifyTo}`))
         .catch((e) => store.addEvent(o.id, 'error', `Could not email signed copy to contractor: ${e.message}`));
@@ -402,8 +534,8 @@ app.post('/s/:token/sign', loadByToken, async (req, res, next) => {
         notify.sendEmail({
           to: o.ownerEmail,
           replyTo: company.email,
-          subject: `Your signed copy – Change Order #${o.number} – ${o.projectName}`,
-          text: `Thank you, ${name}. Attached is your signed copy of Change Order #${o.number}.\n\n${company.name}\n${company.phone}\n${company.email}`,
+          subject: `Your signed copy – ${docTitle(o)} – ${o.projectName}`,
+          text: `Thank you, ${name}. Attached is your signed copy of ${docTitle(o)}${isContract(o) ? ', including your Notice of Cancellation and the other required notices' : ''}.\n\n${company.name}\n${company.phone}\n${company.email}`,
           attachments: attach,
         }).then(() => store.addEvent(o.id, 'notified', `Signed copy emailed to ${o.ownerEmail}`))
           .catch((e) => store.addEvent(o.id, 'error', `Could not email signed copy to customer: ${e.message}`));
@@ -422,8 +554,8 @@ app.post('/s/:token/decline', loadByToken, (req, res) => {
     if (notify.emailConfigured()) {
       notify.sendEmail({
         to: process.env.NOTIFY_EMAIL || company.email,
-        subject: `DECLINED: Change Order #${o.number} – ${o.projectName}`,
-        text: `The customer declined Change Order #${o.number}.${reason ? `\n\nReason: ${reason}` : ''}\n\n${APP_URL}/orders/${o.id}`,
+        subject: `DECLINED: ${docTitle(o)} – ${o.projectName}`,
+        text: `The customer declined ${docTitle(o)}.${reason ? `\n\nReason: ${reason}` : ''}\n\n${APP_URL}/orders/${o.id}`,
       }).catch(() => {});
     }
   }

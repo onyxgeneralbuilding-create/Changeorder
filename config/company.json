@@ -8,5 +8,16 @@
   "license": "1144758",
   "licenseLabel": "CSLB Lic. #",
   "brandColor": "#082A56",
-  "accentColor": "#6E6E6E"
+  "accentColor": "#6E6E6E",
+  "insurance": {
+    "cglCompany": "Spinnaker Insurance Company",
+    "cglPolicy": "HBW5251752XB1",
+    "cglExpires": "2027-10-24",
+    "phone": "(818) 908-1111",
+    "agency": "Progressive United Insurance Agency",
+    "wcCompany": "NorGUARD Insurance Company",
+    "wcPolicy": "ONWC729176",
+    "wcExpires": "2027-01-26",
+    "certificateFile": "assets/insurance-certificate.pdf"
+  }
 }

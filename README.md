@@ -1,6 +1,17 @@
-# Onyx Change Orders
+# Onyx Contracts & Change Orders
 
-Create change orders on your company form, send them to customers by **email and text**, and have customers **sign on their phone**. Signed copies are emailed to you and the customer automatically.
+Create **Home Improvement Contracts** and **Change Orders** on your company forms. Send them to customers by **email and text**, and have customers **sign on their phone**. Signed copies are emailed to you and the customer automatically.
+
+## Home Improvement Contract (5 pages, California)
+
+- **You fill in:** the owner, the job address, the description, dates, the price, the down payment (checked against the lesser of $1,000 or 10%) and the progress payments (checked against the contract price). A long description or more than 5 payments continues on **Attachment A** automatically.
+- **The customer:** enters their **initials** and **age(s)**, chooses whether to agree to **arbitration** (it's voluntary), and signs. A second owner can sign too.
+- **Filled in automatically:**
+  - If any owner is 65 or older, the **5-day** right to cancel is initialed. Otherwise the **3-day** one is.
+  - The Notice of Cancellation is dated, and its deadline is calculated. Sundays and holidays don't count as business days.
+  - The arbitration and receipt initials, and the Customer Acknowledgment checklist.
+  - The insurance disclosure on page 4. It comes from the certificate of insurance in `config/company.json`, and you can change it in **Settings**.
+- **Insurance certificate:** `assets/insurance-certificate.pdf` is attached to every contract email. When your policy renews, replace that file and update the dates in `config/company.json`.
 
 ## How it works
 
