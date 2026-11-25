@@ -24,6 +24,15 @@ if (!ADMIN_PASSWORD) {
 const app = express();
 app.set('trust proxy', true);
 app.disable('x-powered-by');
+// One log line per request (shows up in Render's Logs tab).
+app.use((req, res, next) => {
+  const t = Date.now();
+  res.on('finish', () => {
+    const p = req.path.replace(/^\/s\/[^/]+/, '/s/…'); // hide customers' private links
+    console.log(`${req.method} ${p} ${res.statusCode} ${Date.now() - t}ms`);
+  });
+  next();
+});
 app.use(express.urlencoded({ extended: false, limit: '2mb' }));
 app.use(cookieSession({
   name: 'onyx_session',
@@ -77,6 +86,7 @@ function validate(o) {
   if (!o.ownerName) return 'Please enter the owner’s name.';
   if (!o.description) return 'Please describe the work.';
   if (o.priceDirection !== 'none' && !Number(o.amount)) return 'Please enter the amount, or choose “No change”.';
+  if (o.ownerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(o.ownerEmail)) return 'The owner’s email address doesn’t look right. Please check it.';
   if (o.timeDirection !== 'none' && !Number(o.days)) return 'Please enter the number of days, or choose “No change”.';
   return null;
 }
@@ -158,7 +168,7 @@ app.get('/orders/new', requireAdmin, (req, res) => {
 app.post('/orders', requireAdmin, (req, res) => {
   const fields = readOrderForm(req.body);
   const err = validate(fields);
-  if (err) return html(res, views.orderForm({ company, order: fields, isNew: true, pastCustomers: pastCustomers(), error: err }), 400);
+  if (err) { console.log(`New change order not saved: ${err}`); return html(res, views.orderForm({ company, order: fields, isNew: true, pastCustomers: pastCustomers(), error: err }), 400); }
   const order = store.createOrder(fields);
   setFlash(req, `Change order #${order.number} saved. Review it, then send it to the customer.`);
   res.redirect(`/orders/${order.id}`);
