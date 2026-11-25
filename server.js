@@ -239,7 +239,7 @@ app.post('/logout', (req, res) => { req.session = null; res.redirect('/login'); 
 
 // ---------- admin ----------
 app.get('/', requireAdmin, (req, res) => {
-  html(res, views.dashboard({ company, orders: store.listOrders(), flash: takeFlash(req), filter: req.query.status || '', year: req.query.year }));
+  html(res, views.dashboard({ company, orders: store.listOrders(), flash: takeFlash(req), filter: req.query.status || '', year: req.query.year, settings: store.getSettings() }));
 });
 
 app.get('/new', requireAdmin, (req, res) => html(res, views.newChooser({ company })));
@@ -434,6 +434,9 @@ app.post('/settings', requireAdmin, (req, res) => {
     wcOption: ['A', 'B'].includes(str('wcOption')) ? str('wcOption') : 'B',
     salesmanName: str('salesmanName'),
     salesmanReg: str('salesmanReg'),
+    cglExpires: /^\d{4}-\d{2}-\d{2}$/.test(str('cglExpires')) ? str('cglExpires') : '',
+    wcExpires: /^\d{4}-\d{2}-\d{2}$/.test(str('wcExpires')) ? str('wcExpires') : '',
+    licenseExpires: /^\d{4}-\d{2}-\d{2}$/.test(str('licenseExpires')) ? str('licenseExpires') : '',
   };
   const sig = String(req.body.signature || '');
   if (sig.startsWith('data:image/png;base64,')) patch.contractorSignature = sig;
