@@ -292,7 +292,7 @@ function loadOrder(req, res, next) {
 app.get('/orders/:id', requireAdmin, loadOrder, (req, res) => {
   html(res, views.orderDetail({
     company, order: req.order, settings: store.getSettings(),
-    emailReady: notify.emailConfigured(), smsReady: notify.smsConfigured(),
+    emailReady: notify.emailConfigured(),
     signLink: signLink(req.order), flash: takeFlash(req), warnings: contractWarnings(req.order),
   }));
 });
@@ -352,11 +352,9 @@ app.post('/orders/:id/contractor-sign', requireAdmin, loadOrder, (req, res) => {
 
 app.post('/orders/:id/send', requireAdmin, loadOrder, async (req, res) => {
   const order = req.order;
-  const { viaEmail, viaSms } = req.body;
   const email = String(req.body.email || '').trim();
-  const phone = String(req.body.phone || '').trim();
   const note = String(req.body.note || '').trim();
-  if (!viaEmail && !viaSms) { setFlash(req, 'Choose email and/or text message.', 'error'); return res.redirect(`/orders/${order.id}`); }
+  if (!email) { setFlash(req, 'Enter the customer’s email address.', 'error'); return res.redirect(`/orders/${order.id}`); }
 
   const settings = store.getSettings();
   if (settings.autoSign !== false) applyContractorSignature(order);
@@ -365,9 +363,8 @@ app.post('/orders/:id/send', requireAdmin, loadOrder, async (req, res) => {
   const results = [];
   const errors = [];
 
-  if (viaEmail) {
+  {
     try {
-      if (!email) throw new Error('Enter the customer’s email address.');
       const pdf = await buildDoc(store.getOrder(order.id));
       const greeting = `Hi ${order.ownerName.split(' ')[0] || ''},`.replace(' ,', ',');
       const intro = `${company.name} has sent you ${docTitle(order)} for ${order.projectName} to review and sign.`;
@@ -391,20 +388,9 @@ app.post('/orders/:id/send', requireAdmin, loadOrder, async (req, res) => {
     } catch (e) { errors.push(`Email: ${e.message}`); }
   }
 
-  if (viaSms) {
-    try {
-      if (!phone) throw new Error('Enter the customer’s mobile number.');
-      const body = `${company.name}: ${docTitle(order)} for ${order.projectName} is ready for your review and signature: ${link}${note ? `\n${note}` : ''}`;
-      await notify.sendSms({ to: phone, body });
-      store.addEvent(order.id, 'sent_sms', `Texted to ${phone}`);
-      results.push(`texted to ${phone}`);
-    } catch (e) { errors.push(`Text: ${e.message}`); }
-  }
-
   const patch = {};
   if (results.length && ['draft'].includes(store.getOrder(order.id).status)) patch.status = 'sent';
   if (email) patch.ownerEmail = email;
-  if (phone) patch.ownerPhone = phone;
   store.updateOrder(order.id, patch);
 
   if (errors.length) setFlash(req, (results.length ? `Sent: ${results.join(', ')}. ` : '') + errors.join(' '), 'error');
@@ -420,7 +406,7 @@ app.post('/orders/:id/delete', requireAdmin, loadOrder, (req, res) => {
 
 app.get('/settings', requireAdmin, (req, res) => {
   html(res, views.settingsPage({
-    company, settings: store.getSettings(), emailReady: notify.emailConfigured(), smsReady: notify.smsConfigured(),
+    company, settings: store.getSettings(), emailReady: notify.emailConfigured(),
     appUrl: APP_URL, flash: takeFlash(req),
   }));
 });

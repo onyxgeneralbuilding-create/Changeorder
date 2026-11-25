@@ -6,7 +6,7 @@ It creates two kinds of documents:
 - **Home Improvement Contracts**, numbered HIC-1001 and up.
 - **Change Orders**, numbered 1001 and up.
 
-It sends them to customers by email and text. Customers sign on their phone, and the signed PDF is emailed to both sides.
+It emails them to customers. You can also copy the signing link or text it from your own phone. Customers sign on their phone, and the signed PDF is emailed to both sides.
 
 The owner works mostly from an **iPad in Safari** and is not a developer. Explain steps click by click, in plain language.
 
@@ -24,7 +24,8 @@ The owner works mostly from an **iPad in Safari** and is not a developer. Explai
 - Node 22 and Express, server-rendered HTML in `lib/views.js`, no front-end framework.
 - Data is a JSON file store (`lib/store.js`). `DATA_DIR` sets its location; on Render that's `/var/data` on a persistent disk.
 - PDFs are built with pdfkit, using Inter Tight fonts from `assets/fonts` under the OFL license. Lato is no longer used.
-- Email goes through Gmail SMTP with an App Password (`lib/notify.js`). SMS goes through the Twilio REST API, which is **not configured yet**.
+- Email goes through Gmail SMTP with an App Password (`lib/notify.js`).
+- **No automatic texting.** The owner decided against Twilio, and its code was removed. The detail page keeps **Copy link** and **"Text it from my phone"** (an `sms:` link that opens the owner's own Messages app).
 - Google reviews tile (`lib/reviews.js`) uses the Places API (New) with `GOOGLE_PLACES_API_KEY` (an env var) and a Place ID entered in Settings. It's cached for 6 hours and keeps one snapshot per day to show monthly and yearly gains. The business wasn't found by name in a search, so it may be a service-area listing.
 - Renewal reminder emails (`lib/reminders.js`) are checked hourly inside the app. They go out 60, 30, 7 and 1 days before, on the day, and once if lapsed.
 
@@ -82,7 +83,6 @@ The owner works mostly from an **iPad in Safari** and is not a developer. Explai
   - `ADMIN_PASSWORD` and `SESSION_SECRET`.
   - Email: `SMTP_*`. `SMTP_PASS` is a Gmail App Password. The sender name comes from `EMAIL_FROM_NAME` (default "Onyx General Building"). It is built as {name, address} because a comma in "…, Inc." once made Gmail show the sender as just "Inc.".
   - `NOTIFY_EMAIL`.
-  - Texting: `TWILIO_*`.
   - `APP_URL` is optional; Render sets `RENDER_EXTERNAL_URL` automatically.
 - **Browser caching:** CSS and JS links are versioned (`?v=hash`), so Safari picks up style changes right away.
 - **Logs:** every request is logged; customer signing tokens are hidden in the logs.
@@ -96,6 +96,5 @@ The owner works mostly from an **iPad in Safari** and is not a developer. Explai
 ## Open to-dos
 - **Google reviews:** create a Google Cloud API key for the Places API (New) and add it as `GOOGLE_PLACES_API_KEY` in Render. Then enter the Place ID in Settings.
 - **Domain:** the owner owns onyxgeneralbuilding.com, a candidate for `hub.` as a custom domain.
-- **Texting:** set up Twilio. It needs A2P 10DLC registration. Until then, use the "Text it from my phone" link.
 - **Domain:** optionally add a custom domain, e.g. `hub.onyxgeneralbuilding.com`.
 - **Workers' comp renewal:** due 2027-01-26. Update the certificate and dates when it renews.

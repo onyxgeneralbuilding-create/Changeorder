@@ -1,6 +1,6 @@
 # Onyx Contracts Hub
 
-Create **Home Improvement Contracts** and **Change Orders** on your company forms. Send them to customers by **email and text**, and have customers **sign on their phone**. Signed copies are emailed to you and the customer automatically.
+Create **Home Improvement Contracts** and **Change Orders** on your company forms. Send them to customers by **email**, and have customers **sign on their phone**. Signed copies are emailed to you and the customer automatically.
 
 ## Home Improvement Contract (5 pages, California)
 
@@ -44,7 +44,6 @@ npm start                # opens on http://localhost:3000
 | `ADMIN_PASSWORD` | Password you use to log in |
 | `SESSION_SECRET` | Any long random text |
 | `SMTP_*`, `EMAIL_FROM`, `NOTIFY_EMAIL` | Email sending (see below) |
-| `TWILIO_*` | Text messages (see below) |
 | `DATA_DIR` | Optional. Folder where change orders and signed PDFs are saved. The default is `./data`. |
 
 ### Email through Gmail
@@ -52,12 +51,6 @@ npm start                # opens on http://localhost:3000
 2. Go to **Security → App passwords**, create one called "Change Orders" and copy the 16-letter password.
 3. Put it in `SMTP_PASS`. Keep `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=465` and `SMTP_USER=onyxgeneralbuilding@gmail.com`.
 
-### Text messages through Twilio
-1. Create an account at twilio.com and buy a phone number (about $1–2 a month; each text costs about 1¢).
-2. Complete **A2P 10DLC** registration. US carriers require it for business texting, and approval takes a few days.
-3. Copy the Account SID, Auth Token and your Twilio number into the `TWILIO_*` settings.
-
-Until texting is set up, you can still use **"Text it from my phone"** on each change order. It opens your phone's messaging app with the link already filled in.
 
 ## Putting it online
 
