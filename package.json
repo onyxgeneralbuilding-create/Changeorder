@@ -1,0 +1,22 @@
+{
+  "name": "onyx-change-orders",
+  "version": "1.0.0",
+  "description": "Create, send (email/text), and e-sign change orders for Onyx General Building, Inc.",
+  "main": "server.js",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "smoke": "node scripts/smoke-test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "cookie-session": "^2.1.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "nodemailer": "^6.9.16",
+    "pdfkit": "^0.15.2"
+  }
+}
