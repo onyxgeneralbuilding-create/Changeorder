@@ -294,3 +294,6 @@ a.stat:hover::after { color: var(--ink); }
 .team .form { margin: .6rem 0; }
 .team .form input { max-width: 280px; margin-top: 0 !important; }
 .card h3 { font-size: 1rem; font-weight: 500; margin: 1rem 0 .7rem; }
+/* more than 4 business tiles wrap onto a new row */
+.stats > .stat:nth-child(4n+1) { border-left: 0; padding-left: 0; }
+.stats > .stat:nth-child(n+5) { border-top: 1px solid var(--rule); }

@@ -72,9 +72,13 @@ The owner works mostly from an **iPad in Safari** and is not a developer. Explai
   - Pill buttons in Onyx navy, which is the only accent color.
 - **Team members:** the owner adds users in **Settings → Team**: a name, a username, an optional email and a password. Passwords are stored as scrypt hashes in `db.users`.
   - **Logging in:** a member logs in with username and password. The owner leaves the username blank and uses `ADMIN_PASSWORD`. Failed logins are throttled to 10 per IP per 15 minutes.
-  - **What a member sees:** only documents with `createdBy === their id`, including the dashboard totals and the "same customer" dropdown. No Settings, no renewal or Google reviews tiles, and no contractor signature. The owner's saved signature is never auto-applied to members' documents; the owner signs those.
+  - **What a member sees:** only documents with `createdBy === their id`, including the dashboard totals and the "same customer" dropdown. They see the Google reviews tile and their own **Salesperson card** tile, but no Settings, no insurance or license tiles, and no contractor signature. The owner's saved signature is never auto-applied to members' documents; the owner signs those.
   - **Notifications:** signed and declined emails also go to the member who created the document.
   - **Owner's view:** sees everything, with "· Name" shown on members' documents. Documents created before Team existed have no `createdBy` and count as the owner's.
+  - **Salesperson card:** each member has `hisNumber` and `hisExpires` (their Home Improvement Salesperson registration). The owner sets them in Settings → Team.
+    - The tile uses the same green/amber/red colors. The owner sees every member's card in the Business row.
+    - Reminders go to the owner and the member.
+    - New contracts a member creates prefill "Salesman: name / State Registration Number" from these fields.
   - **Code:** `lib/context.js` (AsyncLocalStorage) exposes the logged-in user to the views.
 - **Top menu:** Documents · Leads · Estimates · + New · Settings · Log out. The current page is underlined.
   - **Leads** (`/leads`) and **Estimates** (`/estimates`) are "Coming soon" placeholder pages (`views.comingSoon`) until they're built.

@@ -283,8 +283,9 @@ app.post('/logout', (req, res) => { req.session = null; res.redirect('/login'); 
 
 // ---------- admin ----------
 app.get('/', requireLogin, async (req, res) => {
-  const rv = isOwner(req) ? await reviews.getReviews().catch(() => ({ configured: false })) : null;
-  html(res, views.dashboard({ company, orders: visibleOrders(req), flash: takeFlash(req), filter: req.query.status || '', year: req.query.year, settings: store.getSettings(), reviews: rv }));
+  const rv = await reviews.getReviews().catch(() => ({ configured: false }));
+  const me = isOwner(req) ? null : store.getUser(req.user.id);
+  html(res, views.dashboard({ company, orders: visibleOrders(req), team: isOwner(req) ? store.listUsers() : [me].filter(Boolean), flash: takeFlash(req), filter: req.query.status || '', year: req.query.year, settings: store.getSettings(), reviews: rv }));
 });
 
 app.get('/leads', requireLogin, (req, res) => html(res, views.comingSoon({
@@ -307,6 +308,8 @@ app.get('/contracts/new', requireLogin, (req, res) => {
     type: 'hic', number: store.peekNextNumber('hic'), date: f.todayISO(), lender: 'none', downPayment: '', financeCharge: 'none',
     changeOrderFee: '20', commencement: s.defaultCommencement || 'Delivery of materials or start of work at the job site',
     salesmanName: s.salesmanName || '', salesmanReg: s.salesmanReg || '', payments: [],
+    // A team member's own salesperson registration goes on their contracts.
+    ...(!isOwner(req) && store.getUser(req.user.id)?.hisNumber ? { salesmanName: req.user.name, salesmanReg: store.getUser(req.user.id).hisNumber } : {}),
   };
   html(res, views.contractForm({ company, order, isNew: true, pastCustomers: pastCustomers(req) }));
 });
@@ -479,7 +482,28 @@ app.post('/settings/users', requireOwner, (req, res) => {
   else if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) err = 'That email address doesn’t look right.';
   else if (password.length < 8) err = 'Passwords need at least 8 characters.';
   if (err) setFlash(req, err, 'error');
-  else { store.createUser({ name, username, email, password }); setFlash(req, `${name} added. They log in with username “${username}”.`); }
+  else {
+    const u = store.createUser({ name, username, email, password });
+    store.updateUser(u.id, hisFields(req.body));
+    setFlash(req, `${name} added. They log in with username “${username}”.`);
+  }
+  res.redirect('/settings#team');
+});
+
+const hisFields = (body) => ({
+  hisNumber: String(body.hisNumber || '').trim().slice(0, 30),
+  hisExpires: /^\d{4}-\d{2}-\d{2}$/.test(String(body.hisExpires || '')) ? String(body.hisExpires) : '',
+});
+
+app.post('/settings/users/:uid', requireOwner, (req, res) => {
+  const u = store.getUser(req.params.uid);
+  const email = String(req.body.email || '').trim();
+  if (!u) setFlash(req, 'That person wasn’t found.', 'error');
+  else if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) setFlash(req, 'That email address doesn’t look right.', 'error');
+  else {
+    store.updateUser(u.id, { email, ...hisFields(req.body) });
+    setFlash(req, `${u.name}’s details saved.`);
+  }
   res.redirect('/settings#team');
 });
 
