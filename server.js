@@ -444,7 +444,7 @@ app.post('/settings/test-reminder', requireAdmin, async (req, res) => {
   res.redirect('/settings#renewals');
 });
 
-app.post('/settings', requireAdmin, (req, res) => {
+app.post('/settings', requireAdmin, async (req, res) => {
   const str = (k) => String(req.body[k] || '').trim();
   const patch = {
     contractorSignerName: str('contractorSignerName'),
@@ -456,15 +456,28 @@ app.post('/settings', requireAdmin, (req, res) => {
     wcOption: ['A', 'B'].includes(str('wcOption')) ? str('wcOption') : 'B',
     salesmanName: str('salesmanName'),
     salesmanReg: str('salesmanReg'),
-    googlePlaceId: str('googlePlaceId').replace(/^place_id:/, ''),
     cglExpires: /^\d{4}-\d{2}-\d{2}$/.test(str('cglExpires')) ? str('cglExpires') : '',
     wcExpires: /^\d{4}-\d{2}-\d{2}$/.test(str('wcExpires')) ? str('wcExpires') : '',
     licenseExpires: /^\d{4}-\d{2}-\d{2}$/.test(str('licenseExpires')) ? str('licenseExpires') : '',
   };
   const sig = String(req.body.signature || '');
   if (sig.startsWith('data:image/png;base64,')) patch.contractorSignature = sig;
+  // Google listing: accept a Place ID or a Google Maps share link.
+  const placeInput = str('googlePlaceId');
+  let placeMsg = '';
+  if (placeInput && placeInput !== store.getSettings().googlePlaceId) {
+    try {
+      const found = await reviews.resolvePlace(placeInput);
+      patch.googlePlaceId = found.placeId;
+      placeMsg = ` Google listing connected${found.name ? `: ${found.name}` : ''}.`;
+    } catch (e) {
+      placeMsg = ` Google listing not connected: ${e.message}`;
+    }
+  } else if (!placeInput) {
+    patch.googlePlaceId = '';
+  }
   store.updateSettings(patch);
-  setFlash(req, 'Settings saved.');
+  setFlash(req, `Settings saved.${placeMsg}`, placeMsg.includes('not connected') ? 'error' : 'ok');
   res.redirect('/settings');
 });
 
