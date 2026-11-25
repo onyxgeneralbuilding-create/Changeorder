@@ -41,7 +41,8 @@ The owner works mostly from an **iPad in Safari** and is not a developer. Explai
   - Both forms closely match the owner's paper Builder's Book forms (206 and 203): the same wording, order and layout.
   - The owner was told Builder's Book's copyright notice says reproduction needs their permission.
 - **Typography:**
-  - The font is Lato, a "softer, sleeker" look than Times.
+  - **Change order PDF:** Inter Tight, the same typeface as the hub, in Regular and Medium (no heavy bold). Blank lines are thin and gray (#6f6f6f, 0.45pt) and the navy border is 2.2pt, for a "sleek and breezy" look. The font files are static instances in `assets/fonts/InterTight-*.ttf`.
+  - **Contract PDF:** still Lato, a "softer, sleeker" look than Times.
   - **All text is black**, including filled-in values. Only the legal citation notes on the contract stay red, as on the original.
   - The border is navy, #082A56, the brand color taken from the logo.
 - **Contractor block:**
