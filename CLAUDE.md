@@ -23,7 +23,7 @@ The owner works mostly from an **iPad in Safari** and is not a developer. Explai
 ## Stack
 - Node 22 and Express, server-rendered HTML in `lib/views.js`, no front-end framework.
 - Data is a JSON file store (`lib/store.js`). `DATA_DIR` sets its location; on Render that's `/var/data` on a persistent disk.
-- PDFs are built with pdfkit, using Lato fonts from `assets/fonts` under the OFL license.
+- PDFs are built with pdfkit, using Inter Tight fonts from `assets/fonts` under the OFL license. Lato is no longer used.
 - Email goes through Gmail SMTP with an App Password (`lib/notify.js`). SMS goes through the Twilio REST API, which is **not configured yet**.
 - Google reviews tile (`lib/reviews.js`) uses the Places API (New) with `GOOGLE_PLACES_API_KEY` (an env var) and a Place ID entered in Settings. It's cached for 6 hours and keeps one snapshot per day to show monthly and yearly gains. The business wasn't found by name in a search, so it may be a service-area listing.
 - Renewal reminder emails (`lib/reminders.js`) are checked hourly inside the app. They go out 60, 30, 7 and 1 days before, on the day, and once if lapsed.
@@ -41,14 +41,17 @@ The owner works mostly from an **iPad in Safari** and is not a developer. Explai
   - Both forms closely match the owner's paper Builder's Book forms (206 and 203): the same wording, order and layout.
   - The owner was told Builder's Book's copyright notice says reproduction needs their permission.
 - **Typography:**
-  - **Change order PDF:** Inter Tight, the same typeface as the hub. Light (and Light italic) is used for text and filled-in values, Regular for labels and the title. The owner tried ExtraLight and found it too thin. Blank lines are thin and gray (#6f6f6f, 0.45pt) and the navy border is 2.2pt, for a "sleek and breezy" look. The font files are static instances in `assets/fonts/InterTight-*.ttf`.
-  - **Contract PDF:** still Lato, a "softer, sleeker" look than Times.
+  - **Both PDFs use Inter Tight**, the same typeface as the hub.
+    - **Change order:** Regular throughout, with Light only for tiny captions. This is the weight the owner approved.
+    - **Contract:** Regular text, with **SemiBold** for headings and the notices B&P 7159 requires in boldface. Don't drop the boldface on those.
+    - Blank lines are thin and gray (#6f6f6f, 0.45pt) and the navy border is 2.2pt.
+    - **Font files:** `assets/fonts/InterTight-*.ttf` are static instances made with `fonttools varLib.instancer --update-name-table`. Each weight **must have a unique PostScript name**. pdfkit dedupes fonts by name, and without unique names every weight silently renders as the first one loaded.
   - **All text is black**, including filled-in values. Only the legal citation notes on the contract stay red, as on the original.
   - The border is navy, #082A56, the brand color taken from the logo.
 - **Contractor block:**
   - The contractor info is **printed permanently**, not a fill-in section.
   - **Change order:** the contractor box is style `c3`, an outlined card with a small "CONTRACTOR" label on its top edge, details on the left and the logo on the right.
-  - **Contract:** the logo sits in the centered contractor block, not in a page corner.
+  - **Contract:** the same outlined card in the left "DIRECT CONTRACTOR" column, with details on the left and the logo on the right.
   - The change-order # and date stay fillable.
 - **Never** put the logo next to signature lines.
 - **Change order:**
