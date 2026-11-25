@@ -10,6 +10,7 @@ const views = require('./lib/views');
 const notify = require('./lib/notify');
 const reminders = require('./lib/reminders');
 const ctx = require('./lib/context');
+const calc = require('./lib/invoices');
 const reviews = require('./lib/reviews');
 const f = require('./lib/format');
 const { buildPdf } = require('./lib/pdf');
@@ -116,7 +117,7 @@ function safeEqual(a, b) {
 }
 
 const ORDER_FIELDS = [
-  'number', 'date', 'contractDate', 'projectName', 'copyFor',
+  'number', 'date', 'contractDate', 'projectName', 'copyFor', 'contractId',
   'ownerName', 'owner2Name', 'ownerAddress', 'ownerCityStateZip', 'ownerPhone', 'ownerFax', 'ownerEmail',
   'subcontractors', 'description', 'priceDirection', 'amount', 'timeDirection', 'days',
 ];
@@ -197,6 +198,32 @@ function contractWarnings(o) {
   if (!(o.payments || []).length) w.push('No schedule of progress payments has been entered.');
   if (!o.startDate || !o.completionDate) w.push('The approximate start and completion dates are missing.');
   return w;
+}
+
+// Payment figures for the dashboard (collected uses the payment date's year).
+function moneyStats(req, yearParam) {
+  const year = String(yearParam || f.todayISO().slice(0, 4));
+  const invs = store.listInvoices().filter((i) => isOwner(req) || i.createdBy === req.user.id);
+  let collected = 0, outstanding = 0, overdue = 0, overdueCount = 0, releases = 0;
+  invs.forEach((inv) => {
+    const sm = calc.summary(inv);
+    (inv.payments || []).forEach((p) => {
+      if (String(p.date).slice(0, 4) === year) collected += Number(p.amount) || 0;
+      if (!p.release || !p.release.signedAt) releases += 1;
+    });
+    if (['unpaid', 'partial', 'overdue'].includes(sm.status)) outstanding += sm.balance;
+    if (sm.status === 'overdue') { overdue += sm.balance; overdueCount += 1; }
+  });
+  return { year, collected: calc.cents(collected), outstanding: calc.cents(outstanding), overdue: calc.cents(overdue), overdueCount, releases, count: invs.length };
+}
+
+// Contracts a change order can be linked to (with owner info to prefill the form).
+function contractChoices(req) {
+  return visibleOrders(req).filter((o) => o.type === 'hic').map((o) => ({
+    id: o.id, number: o.number, projectName: o.projectName, ownerName: o.ownerName, owner2Name: o.owner2Name,
+    ownerAddress: o.ownerAddress, ownerCityStateZip: o.ownerCityStateZip, ownerPhone: o.ownerPhone, ownerFax: o.ownerFax, ownerEmail: o.ownerEmail,
+    contractDate: o.signatures && o.signatures.owner ? o.signatures.owner.at.slice(0, 10) : o.date,
+  }));
 }
 
 function pastCustomers(req) {
@@ -285,7 +312,7 @@ app.post('/logout', (req, res) => { req.session = null; res.redirect('/login'); 
 app.get('/dashboard', requireLogin, async (req, res) => {
   const rv = await reviews.getReviews().catch(() => ({ configured: false }));
   const me = isOwner(req) ? null : store.getUser(req.user.id);
-  html(res, views.dashboard({ company, orders: visibleOrders(req), team: isOwner(req) ? store.listUsers() : [me].filter(Boolean), flash: takeFlash(req), year: req.query.year, settings: store.getSettings(), reviews: rv }));
+  html(res, views.dashboard({ company, orders: visibleOrders(req), money: moneyStats(req, req.query.year), team: isOwner(req) ? store.listUsers() : [me].filter(Boolean), flash: takeFlash(req), year: req.query.year, settings: store.getSettings(), reviews: rv }));
 });
 
 app.get('/', requireLogin, (req, res) => {
@@ -331,13 +358,13 @@ app.get('/orders/new', requireLogin, (req, res) => {
   const order = {
     number: store.peekNextNumber(), date: f.todayISO(), copyFor: 'owner', priceDirection: 'increase', timeDirection: 'none', subcontractors: 'no',
   };
-  html(res, views.orderForm({ company, order, isNew: true, pastCustomers: pastCustomers(req) }));
+  html(res, views.orderForm({ company, contracts: contractChoices(req), order, isNew: true, pastCustomers: pastCustomers(req) }));
 });
 
 app.post('/orders', requireLogin, (req, res) => {
   const fields = readOrderForm(req.body);
   const err = validate(fields);
-  if (err) { console.log(`New change order not saved: ${err}`); return html(res, views.orderForm({ company, order: fields, isNew: true, pastCustomers: pastCustomers(req), error: err }), 400); }
+  if (err) { console.log(`New change order not saved: ${err}`); return html(res, views.orderForm({ company, contracts: contractChoices(req), order: fields, isNew: true, pastCustomers: pastCustomers(req), error: err }), 400); }
   const order = store.createOrder({ ...fields, ...creator(req) });
   setFlash(req, `Change order #${order.number} saved. Review it, then send it to the customer.`);
   res.redirect(`/orders/${order.id}`);
@@ -355,13 +382,14 @@ app.get('/orders/:id', requireLogin, loadOrder, (req, res) => {
     company, order: req.order, settings: store.getSettings(),
     emailReady: notify.emailConfigured(),
     signLink: signLink(req.order), flash: takeFlash(req), warnings: contractWarnings(req.order),
+    ledger: isContract(req.order) ? { ...calc.contractLedger(req.order), invoiceRows: calc.contractLedger(req.order).invoices.map((i) => ({ inv: i, sm: calc.summary(i) })) } : null,
   }));
 });
 
 app.get('/orders/:id/edit', requireLogin, loadOrder, (req, res) => {
   if (req.order.signatures?.owner) return res.redirect(`/orders/${req.order.id}`);
   const form = isContract(req.order) ? views.contractForm : views.orderForm;
-  html(res, form({ company, order: req.order, isNew: false, pastCustomers: pastCustomers(req) }));
+  html(res, form({ company, contracts: contractChoices(req), order: req.order, isNew: false, pastCustomers: pastCustomers(req) }));
 });
 
 app.post('/orders/:id', requireLogin, loadOrder, (req, res) => {
@@ -370,7 +398,7 @@ app.post('/orders/:id', requireLogin, loadOrder, (req, res) => {
   const fields = contract ? readContractForm(req.body) : readOrderForm(req.body);
   const err = contract ? validateContract(fields) : validate(fields);
   const form = contract ? views.contractForm : views.orderForm;
-  if (err) return html(res, form({ company, order: { ...req.order, ...fields }, isNew: false, pastCustomers: pastCustomers(req), error: err }), 400);
+  if (err) return html(res, form({ company, contracts: contractChoices(req), order: { ...req.order, ...fields }, isNew: false, pastCustomers: pastCustomers(req), error: err }), 400);
   // Editing invalidates a contractor signature made on the old version.
   const signatures = { ...(req.order.signatures || {}) };
   delete signatures.contractor;
@@ -557,6 +585,8 @@ app.post('/settings', requireOwner, async (req, res) => {
     wcOption: ['A', 'B'].includes(str('wcOption')) ? str('wcOption') : 'B',
     salesmanName: str('salesmanName'),
     salesmanReg: str('salesmanReg'),
+    paymentInstructions: String(req.body.paymentInstructions || '').trim().slice(0, 600),
+    contractorSignerTitle: str('contractorSignerTitle') || 'Owner',
     cglExpires: /^\d{4}-\d{2}-\d{2}$/.test(str('cglExpires')) ? str('cglExpires') : '',
     wcExpires: /^\d{4}-\d{2}-\d{2}$/.test(str('wcExpires')) ? str('wcExpires') : '',
     licenseExpires: /^\d{4}-\d{2}-\d{2}$/.test(str('licenseExpires')) ? str('licenseExpires') : '',
@@ -704,6 +734,11 @@ app.post('/s/:token/decline', loadByToken, (req, res) => {
     }
   }
   res.redirect(`/s/${req.params.token}`);
+});
+
+require('./lib/routes-invoices')(app, {
+  company, html, setFlash, takeFlash, requireLogin, requireOwner, isOwner, appUrl: APP_URL,
+  notFound: (res) => html(res, views.notFound({ company }), 404),
 });
 
 app.use((req, res) => html(res, views.notFound({ company }), 404));

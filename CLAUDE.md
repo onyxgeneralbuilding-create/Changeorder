@@ -80,7 +80,18 @@ The owner works mostly from an **iPad in Safari** and is not a developer. Explai
     - Reminders go to the owner and the member.
     - New contracts a member creates prefill "Salesman: name / State Registration Number" from these fields.
   - **Code:** `lib/context.js` (AsyncLocalStorage) exposes the logged-in user to the views.
-- **Top menu:** Dashboard · Documents · Leads · Estimates · + New · Settings · Log out. The current page is underlined.
+- **Invoices** (`/invoices`; files `lib/invoices.js`, `lib/routes-invoices.js`, `lib/views-invoices.js`, `lib/pdf-invoice.js`, `lib/lien-text.js`):
+  - **Data:** stored in `db.invoices` (numbered INV-1001…), each tied to a contract (`contractId`). `createdBy` is copied from the contract, so team members see their own.
+  - **Lines:** come from the contract's down payment, its progress payments and signed change orders linked to it (`contractId` on the change order form), plus an optional custom line. Lines already invoiced are hidden.
+  - **Payments:** recorded by the owner or the member; there are no card payments. Each gets a receipt (RCT-1001…), emailed with a PDF.
+  - **Lien releases:** the statutory unconditional release (§8134 progress, or §8138 final once the contract balance is 0) is signed with the owner's saved signature and title.
+    - Cash, Zelle and bank transfers recorded by the owner are signed immediately. Checks wait for "Check cleared · sign & send".
+    - Payments recorded by members wait for the owner, who gets an email.
+  - **Status:** draft, unpaid, partially paid, paid, or overdue (when past the due date).
+  - **Dashboard:** a Payments section shows collected (by payment date and year), outstanding, overdue, and lien releases waiting. Contract detail has a Payments card.
+  - **Design:** invoice, receipt and release PDFs use a clean modern layout (white page, navy band, Inter Tight), not the Builder's Book look. The owner asked for "nicer, clean and modern."
+  - **Settings:** "How customers can pay" text is printed on invoices, and "Your title" is used on releases.
+- **Top menu:** Dashboard · Documents · Invoices · Leads · Estimates · + New · Settings · Log out. The current page is underlined.
   - **Dashboard** (`/dashboard`) holds the "at a glance" totals, the year picker and the Business tiles. Everyone lands there after logging in.
   - **Documents** (`/`) is just the list, with the New buttons and status filters.
   - **Leads** (`/leads`) and **Estimates** (`/estimates`) are "Coming soon" placeholder pages (`views.comingSoon`) until they're built.

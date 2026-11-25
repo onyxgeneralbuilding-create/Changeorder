@@ -305,3 +305,18 @@ a.stat:hover::after { color: var(--ink); }
 .stats-wrap > .row { align-items: center; margin-bottom: .7rem; }
 .stats-wrap > .row .stats-title { margin: 0; }
 .yearpick .tab { padding: .2rem .75rem; font-size: .85rem; }
+
+/* invoices */
+.ledger { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); border-top: 1px solid var(--rule-strong); margin: 1rem 0 1.4rem; }
+.ledger > div { padding: .7rem 1rem .8rem 0; display: flex; flex-direction: column; gap: .2rem; }
+.ledger b { font-size: 1.3rem; font-weight: 400; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.invline { align-items: center !important; padding: .55rem 0; border-bottom: 1px solid var(--rule); margin: 0 !important; }
+.invline .grow { flex: 1; }
+.invline .num { font-variant-numeric: tabular-nums; }
+.invtotal { font-size: 1.1rem; margin: 1rem 0; }
+.paylist li { padding: .7rem 0; }
+.paylinks { margin: .35rem 0; }
+form.inline { display: inline; margin: 0; }
+dl.mini { display: grid; grid-template-columns: auto auto; gap: .3rem 1rem; margin: 0 0 1rem; }
+dl.mini dt { color: var(--muted); font-size: .88rem; }
+dl.mini dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
