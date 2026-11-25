@@ -273,3 +273,14 @@ a.stat:hover::after { color: var(--ink); }
   .stats > .stat:first-child { border-top: 0; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* current page in the top menu */
+.topbar nav a.on { text-decoration: underline; text-underline-offset: 6px; text-decoration-thickness: 1.5px; }
+
+/* coming-soon pages */
+.soon { max-width: 680px; padding: 3rem 0 2rem; }
+.soon .eyebrow { font-size: .74rem; font-weight: 500; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 1rem; }
+.soon h1 { font-size: clamp(2.6rem, 6vw, 4.2rem); margin-bottom: 1rem; }
+.soon-lead { font-size: 1.25rem; line-height: 1.4; letter-spacing: -0.01em; margin: 0 0 1.6rem; }
+.soon-list { list-style: none; padding: 0; margin: 0 0 2rem; border-top: 1px solid var(--rule-strong); }
+.soon-list li { padding: .8rem 0; border-bottom: 1px solid var(--rule); color: var(--ink); }

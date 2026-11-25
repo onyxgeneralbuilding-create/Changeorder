@@ -245,6 +245,18 @@ app.get('/', requireAdmin, async (req, res) => {
   html(res, views.dashboard({ company, orders: store.listOrders(), flash: takeFlash(req), filter: req.query.status || '', year: req.query.year, settings: store.getSettings(), reviews: rv }));
 });
 
+app.get('/leads', requireAdmin, (req, res) => html(res, views.comingSoon({
+  company, active: 'leads', title: 'Leads',
+  lead: 'A place to track new customer inquiries from first call to signed contract.',
+  items: ['Capture name, phone, address and what they need', 'Follow-up reminders', 'Turn a lead into an estimate or contract in one tap'],
+})));
+
+app.get('/estimates', requireAdmin, (req, res) => html(res, views.comingSoon({
+  company, active: 'estimates', title: 'Estimates',
+  lead: 'Build and send professional estimates, then convert approved ones into contracts.',
+  items: ['Line items with materials and labor', 'Send for approval by email', 'Approved estimate → Home Improvement Contract'],
+})));
+
 app.get('/new', requireAdmin, (req, res) => html(res, views.newChooser({ company })));
 
 app.get('/contracts/new', requireAdmin, (req, res) => {

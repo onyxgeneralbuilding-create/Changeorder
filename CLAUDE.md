@@ -70,6 +70,8 @@ The owner works mostly from an **iPad in Safari** and is not a developer. Explai
   - A light gray #F2F2F2 background with near-black text, in the Inter Tight font.
   - Hairline rules and no shadows. Figures sit in columns divided by vertical rules; status shows as dots; links carry ↗ arrows; labels are small uppercase gray.
   - Pill buttons in Onyx navy, which is the only accent color.
+- **Top menu:** Documents · Leads · Estimates · + New · Settings · Log out. The current page is underlined.
+  - **Leads** (`/leads`) and **Estimates** (`/estimates`) are "Coming soon" placeholder pages (`views.comingSoon`) until they're built.
 - **Branding:** the app is named **"Onyx Contracts Hub"** (`appName`). Customers see only the company name.
 
 ## Deployment (Render)
