@@ -72,10 +72,10 @@ The owner works mostly from an **iPad in Safari** and is not a developer. Explai
 - **Branding:** the app is named **"Onyx Contracts Hub"** (`appName`). Customers see only the company name.
 
 ## Deployment (Render)
-- **Service:** `onyx-change-orders`, at https://onyx-change-orders.onrender.com.
+- **Service:** the dashboard name is `onyx-contracts-hub` (the owner renamed it). The address is still https://onyx-change-orders.onrender.com.
 - **Branch:** deployed from the `claude/customer-email-text-orders-79kttu` branch using `render.yaml`.
   - Don't rename the service in `render.yaml`. That can create a second service. Rename it in the Render dashboard instead.
-- **Instance:** needs the **Starter** plan with a disk.
+- **Instance:** the **Starter** plan with a disk, confirmed in November 2026. Each deploy causes about 1–2 minutes of downtime, because services with a disk can't do zero-downtime deploys, so batch changes when possible.
   - The Free plan loses data on restart and sleeps, which breaks reminders.
   - Memory is limited to 512 MB, so keep PDF generation light. The contract page text sizes are fixed in `FIXED_SCALE` for this reason. Measuring them on every request crashed the server.
 - **Environment variables:**
@@ -97,6 +97,5 @@ The owner works mostly from an **iPad in Safari** and is not a developer. Explai
 - **Google reviews:** create a Google Cloud API key for the Places API (New) and add it as `GOOGLE_PLACES_API_KEY` in Render. Then enter the Place ID in Settings.
 - **Domain:** the owner owns onyxgeneralbuilding.com, a candidate for `hub.` as a custom domain.
 - **Texting:** set up Twilio. It needs A2P 10DLC registration. Until then, use the "Text it from my phone" link.
-- **Render plan:** confirm the service is on Starter with the `/var/data` disk and `DATA_DIR` set.
 - **Domain:** optionally add a custom domain, e.g. `hub.onyxgeneralbuilding.com`.
 - **Workers' comp renewal:** due 2027-01-26. Update the certificate and dates when it renews.
