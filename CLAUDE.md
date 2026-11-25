@@ -91,10 +91,16 @@ The owner works mostly from an **iPad in Safari** and is not a developer. Explai
   - **Dashboard:** a Payments section shows collected (by payment date and year), outstanding, overdue, and lien releases waiting. Contract detail has a Payments card.
   - **Design:** invoice, receipt and release PDFs use a clean modern layout (white page, navy band, Inter Tight), not the Builder's Book look. The owner asked for "nicer, clean and modern."
   - **Settings:** "How customers can pay" text is printed on invoices, and "Your title" is used on releases.
-- **Top menu:** Dashboard · Documents · Invoices · Leads · Estimates · + New · Settings · Log out. The current page is underlined.
+- **Customers** (`/customers`; files `lib/routes-customers.js`, `lib/views-customers.js`; stored in `db.customers`). This replaced the Leads placeholder; `/leads` redirects here.
+  - **Fields:** match the form field names (ownerName, owner2Name, ownerAddress, ownerCityStateZip, ownerPhone, ownerFax, ownerEmail, workAddress, workCityStateZip), plus notes, createdBy and createdByName.
+  - **On the forms:** the contract and change order forms have a Customer picker (`customerPicker` in views.js) that fills the fields and sets `customerId` on the document. If no customer is picked, "Save this customer to Customers" (checked by default) creates one.
+  - **Prefill:** `?customer=ID` on /contracts/new and /orders/new prefills the form. The customer page links to both.
+  - **Import:** on first run, customers were built from existing documents, matched by creator and name.
+  - **Team members:** see only their own customers.
+- **Top menu:** Dashboard · Documents · Invoices · Customers · Estimates · + New · Settings · Log out. The current page is underlined.
   - **Dashboard** (`/dashboard`) holds the "at a glance" totals, the year picker and the Business tiles. Everyone lands there after logging in.
   - **Documents** (`/`) is just the list, with the New buttons and status filters.
-  - **Leads** (`/leads`) and **Estimates** (`/estimates`) are "Coming soon" placeholder pages (`views.comingSoon`) until they're built.
+  - **Estimates** (`/estimates`) is a "Coming soon" placeholder page (`views.comingSoon`) until it's built.
 - **Branding:** the app is named **"Onyx Contracts Hub"** (`appName`). Customers see only the company name.
 
 ## Deployment (Render)

@@ -117,7 +117,7 @@ function safeEqual(a, b) {
 }
 
 const ORDER_FIELDS = [
-  'number', 'date', 'contractDate', 'projectName', 'copyFor', 'contractId',
+  'number', 'date', 'contractDate', 'projectName', 'copyFor', 'contractId', 'customerId',
   'ownerName', 'owner2Name', 'ownerAddress', 'ownerCityStateZip', 'ownerPhone', 'ownerFax', 'ownerEmail',
   'subcontractors', 'description', 'priceDirection', 'amount', 'timeDirection', 'days',
 ];
@@ -149,7 +149,7 @@ function validate(o) {
 
 // ---------- home improvement contracts ----------
 const CONTRACT_FIELDS = [
-  'number', 'date', 'projectName',
+  'number', 'date', 'projectName', 'customerId',
   'ownerName', 'owner2Name', 'ownerAddress', 'ownerCityStateZip', 'ownerPhone', 'ownerFax', 'ownerEmail',
   'workAddress', 'workCityStateZip', 'lender', 'description', 'commencement', 'startDate', 'completionDate',
   'contractPrice', 'downPayment', 'financeCharge', 'allowances', 'changeOrderFee', 'salesmanName', 'salesmanReg',
@@ -226,21 +226,29 @@ function contractChoices(req) {
   }));
 }
 
+const CUSTOMER_KEYS = ['ownerName', 'owner2Name', 'ownerAddress', 'ownerCityStateZip', 'ownerPhone', 'ownerFax', 'ownerEmail', 'workAddress', 'workCityStateZip'];
+const canSeeCustomer = (req, c) => c && (isOwner(req) || c.createdBy === req.user.id);
+// Saved customers this person can pick from (shape matches the form field names).
 function pastCustomers(req) {
-  const seen = new Set();
-  const out = [];
-  visibleOrders(req).forEach((o) => {
-    const key = `${o.ownerName}|${o.projectName}`.toLowerCase();
-    if (seen.has(key)) return;
-    seen.add(key);
-    out.push({
-      projectName: o.projectName, contractDate: isContract(o) ? (o.signatures?.owner ? o.signatures.owner.at.slice(0, 10) : o.date) : o.contractDate,
-      workAddress: o.workAddress, workCityStateZip: o.workCityStateZip,
-      ownerName: o.ownerName, owner2Name: o.owner2Name, ownerAddress: o.ownerAddress,
-      ownerCityStateZip: o.ownerCityStateZip, ownerPhone: o.ownerPhone, ownerFax: o.ownerFax, ownerEmail: o.ownerEmail,
-    });
-  });
-  return out.slice(0, 50);
+  return store.listCustomers().filter((c) => canSeeCustomer(req, c))
+    .map((c) => ({ id: c.id, ...Object.fromEntries(CUSTOMER_KEYS.map((k) => [k, c[k] || ''])) }));
+}
+// After a contract/change order form: keep a valid chosen customer, or save a new one.
+function attachCustomer(req, fields) {
+  const chosen = store.getCustomer(fields.customerId);
+  if (chosen && canSeeCustomer(req, chosen)) return fields;
+  fields.customerId = '';
+  if (req.body.saveCustomer === '1' && fields.ownerName) {
+    const c = store.createCustomer({ ...Object.fromEntries(CUSTOMER_KEYS.map((k) => [k, fields[k] || ''])), ...creator(req) });
+    fields.customerId = c.id;
+  }
+  return fields;
+}
+// Prefill a new document from ?customer=ID.
+function customerPrefill(req) {
+  const c = store.getCustomer(req.query.customer);
+  if (!canSeeCustomer(req, c)) return {};
+  return { customerId: c.id, ...Object.fromEntries(CUSTOMER_KEYS.map((k) => [k, c[k] || ''])) };
 }
 
 async function pdfFor(order) {
@@ -319,11 +327,7 @@ app.get('/', requireLogin, (req, res) => {
   html(res, views.documentsPage({ company, orders: visibleOrders(req), flash: takeFlash(req), filter: req.query.status || '' }));
 });
 
-app.get('/leads', requireLogin, (req, res) => html(res, views.comingSoon({
-  company, active: 'leads', title: 'Leads',
-  lead: 'A place to track new customer inquiries from first call to signed contract.',
-  items: ['Capture name, phone, address and what they need', 'Follow-up reminders', 'Turn a lead into an estimate or contract in one tap'],
-})));
+app.get('/leads', requireLogin, (req, res) => res.redirect('/customers'));
 
 app.get('/estimates', requireLogin, (req, res) => html(res, views.comingSoon({
   company, active: 'estimates', title: 'Estimates',
@@ -339,6 +343,7 @@ app.get('/contracts/new', requireLogin, (req, res) => {
     type: 'hic', number: store.peekNextNumber('hic'), date: f.todayISO(), lender: 'none', downPayment: '', financeCharge: 'none',
     changeOrderFee: '20', commencement: s.defaultCommencement || 'Delivery of materials or start of work at the job site',
     salesmanName: s.salesmanName || '', salesmanReg: s.salesmanReg || '', payments: [],
+    ...customerPrefill(req),
     // A team member's own salesperson registration goes on their contracts.
     ...(!isOwner(req) && store.getUser(req.user.id)?.hisNumber ? { salesmanName: req.user.name, salesmanReg: store.getUser(req.user.id).hisNumber } : {}),
   };
@@ -349,7 +354,7 @@ app.post('/contracts', requireLogin, (req, res) => {
   const fields = readContractForm(req.body);
   const err = validateContract(fields);
   if (err) { console.log(`New contract not saved: ${err}`); return html(res, views.contractForm({ company, order: fields, isNew: true, pastCustomers: pastCustomers(req), error: err }), 400); }
-  const order = store.createOrder({ ...fields, ...creator(req) });
+  const order = store.createOrder({ ...attachCustomer(req, fields), ...creator(req) });
   setFlash(req, `Contract ${order.number} saved. Review it, then send it to the customer.`);
   res.redirect(`/orders/${order.id}`);
 });
@@ -357,6 +362,7 @@ app.post('/contracts', requireLogin, (req, res) => {
 app.get('/orders/new', requireLogin, (req, res) => {
   const order = {
     number: store.peekNextNumber(), date: f.todayISO(), copyFor: 'owner', priceDirection: 'increase', timeDirection: 'none', subcontractors: 'no',
+    ...customerPrefill(req),
   };
   html(res, views.orderForm({ company, contracts: contractChoices(req), order, isNew: true, pastCustomers: pastCustomers(req) }));
 });
@@ -365,7 +371,7 @@ app.post('/orders', requireLogin, (req, res) => {
   const fields = readOrderForm(req.body);
   const err = validate(fields);
   if (err) { console.log(`New change order not saved: ${err}`); return html(res, views.orderForm({ company, contracts: contractChoices(req), order: fields, isNew: true, pastCustomers: pastCustomers(req), error: err }), 400); }
-  const order = store.createOrder({ ...fields, ...creator(req) });
+  const order = store.createOrder({ ...attachCustomer(req, fields), ...creator(req) });
   setFlash(req, `Change order #${order.number} saved. Review it, then send it to the customer.`);
   res.redirect(`/orders/${order.id}`);
 });
@@ -402,6 +408,7 @@ app.post('/orders/:id', requireLogin, loadOrder, (req, res) => {
   // Editing invalidates a contractor signature made on the old version.
   const signatures = { ...(req.order.signatures || {}) };
   delete signatures.contractor;
+  attachCustomer(req, fields);
   store.updateOrder(req.order.id, { ...fields, signatures });
   store.addEvent(req.order.id, 'edited', `${cap(docWord(req.order))} edited`);
   setFlash(req, 'Changes saved.');
@@ -734,6 +741,11 @@ app.post('/s/:token/decline', loadByToken, (req, res) => {
     }
   }
   res.redirect(`/s/${req.params.token}`);
+});
+
+require('./lib/routes-customers')(app, {
+  company, html, setFlash, takeFlash, requireLogin, isOwner, creator, canSeeCustomer, visibleOrders, CUSTOMER_KEYS,
+  notFound: (res) => html(res, views.notFound({ company }), 404),
 });
 
 require('./lib/routes-invoices')(app, {
