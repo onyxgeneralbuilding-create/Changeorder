@@ -297,3 +297,7 @@ a.stat:hover::after { color: var(--ink); }
 /* more than 4 business tiles wrap onto a new row */
 .stats > .stat:nth-child(4n+1) { border-left: 0; padding-left: 0; }
 .stats > .stat:nth-child(n+5) { border-top: 1px solid var(--rule); }
+/* password with show/hide */
+.pw { position: relative; display: block; }
+.pw input { padding-right: 4rem !important; }
+.pw .link { position: absolute; right: .75rem; top: calc(50% + .175rem); transform: translateY(-50%); font-size: .9rem; }
