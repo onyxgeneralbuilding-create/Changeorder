@@ -301,3 +301,7 @@ a.stat:hover::after { color: var(--ink); }
 .pw { position: relative; display: block; }
 .pw input { padding-right: 4rem !important; }
 .pw .link { position: absolute; right: .75rem; top: calc(50% + .175rem); transform: translateY(-50%); font-size: .9rem; }
+/* year picker sits above the line, not on it */
+.stats-wrap > .row { align-items: center; margin-bottom: .7rem; }
+.stats-wrap > .row .stats-title { margin: 0; }
+.yearpick .tab { padding: .2rem .75rem; font-size: .85rem; }
