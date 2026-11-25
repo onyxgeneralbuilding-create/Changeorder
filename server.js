@@ -13,7 +13,8 @@ const { buildPdf } = require('./lib/pdf');
 
 const company = require('./config/company.json');
 const PORT = Number(process.env.PORT || 3000);
-const APP_URL = (process.env.APP_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
+// On Render, RENDER_EXTERNAL_URL is set automatically, so APP_URL is optional there.
+const APP_URL = (process.env.APP_URL || process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 
 if (!ADMIN_PASSWORD) {
@@ -128,6 +129,8 @@ async function freezeSignedPdf(order) {
   store.updateOrder(order.id, { signedPdf: name });
   return buf;
 }
+
+app.get('/healthz', (req, res) => res.type('text').send('ok'));
 
 // ---------- auth ----------
 app.get('/login', (req, res) => html(res, views.login({ company })));

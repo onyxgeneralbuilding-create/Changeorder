@@ -1,0 +1,40 @@
+# One-click deploy on Render.com: New > Blueprint > pick this repository.
+services:
+  - type: web
+    name: onyx-change-orders
+    runtime: node
+    plan: starter            # a paid plan is needed for the persistent disk
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /healthz
+    disk:
+      name: data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: DATA_DIR
+        value: /var/data
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: ADMIN_PASSWORD
+        sync: false          # Render asks you to type this when deploying
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: "465"
+      - key: SMTP_USER
+        value: onyxgeneralbuilding@gmail.com
+      - key: SMTP_PASS
+        sync: false          # your Gmail app password
+      - key: EMAIL_FROM
+        value: "Onyx General Building, Inc. <onyxgeneralbuilding@gmail.com>"
+      - key: NOTIFY_EMAIL
+        value: onyxgeneralbuilding@gmail.com
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_FROM_NUMBER
+        sync: false

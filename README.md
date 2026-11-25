@@ -51,7 +51,7 @@ Until texting is set up, you can still use **"Text it from my phone"** on each c
 ## Putting it online
 
 Customers need to reach the signing link, so the app has to run on a server. One easy option is **Render.com**:
-1. Create a new **Web Service** from this GitHub repository.
+1. Choose **New → Blueprint** and pick this GitHub repository. `render.yaml` sets everything up. Or create a **Web Service** by hand:
 2. Set the build command to `npm install` and the start command to `npm start`.
 3. Add a **Persistent Disk** mounted at `/var/data`, and set `DATA_DIR=/var/data`. Without it, your change orders are erased whenever the app restarts.
 4. Add the `.env` settings as environment variables. Set `APP_URL` to your Render address or your own domain, for example `https://sign.onyxgeneralbuilding.com`.
