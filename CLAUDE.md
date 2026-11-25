@@ -60,6 +60,10 @@ The owner works mostly from an **iPad in Safari** and is not a developer. Explai
 - **Dashboard:**
   - A row of yearly totals, with a year picker that defaults to the current year in Pacific time.
   - A row of renewal tiles: green when more than 60 days are left, amber at 60 or fewer, red when expired.
+- **Hub look:** the web app's style follows ndstudio.gov, toned down at the owner's request.
+  - A light gray #F2F2F2 background with near-black text, in the Inter Tight font.
+  - Hairline rules and no shadows. Figures sit in columns divided by vertical rules; status shows as dots; links carry ↗ arrows; labels are small uppercase gray.
+  - Pill buttons in Onyx navy, which is the only accent color.
 - **Branding:** the app is named **"Onyx Contracts Hub"** (`appName`). Customers see only the company name.
 
 ## Deployment (Render)
