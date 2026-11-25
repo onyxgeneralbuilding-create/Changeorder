@@ -47,7 +47,8 @@ The owner works mostly from an **iPad in Safari** and is not a developer. Explai
   - The border is navy, #082A56, the brand color taken from the logo.
 - **Contractor block:**
   - The contractor info is **printed permanently**, not a fill-in section.
-  - The logo sits in the centered contractor block, not in a page corner.
+  - **Change order:** the contractor box is style `c3`, an outlined card with a small "CONTRACTOR" label on its top edge, details on the left and the logo on the right.
+  - **Contract:** the logo sits in the centered contractor block, not in a page corner.
   - The change-order # and date stay fillable.
 - **Never** put the logo next to signature lines.
 - **Change order:**
