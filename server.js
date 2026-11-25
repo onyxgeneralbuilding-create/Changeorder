@@ -360,14 +360,27 @@ app.post('/s/:token/sign', loadByToken, async (req, res, next) => {
     if (!image.startsWith('data:image/png;base64,') || image.length < 500) return back('Please sign in the box.');
     if (req.body.consent !== '1') return back('Please check the box to agree.');
 
-    const sig = {
-      name, image, at: new Date().toISOString(), method: 'electronic',
-      ip: req.ip, userAgent: String(req.get('user-agent') || '').slice(0, 300),
-      email: who === 'owner' ? o.ownerEmail : '',
-    };
+    // Optional second owner signing at the same time.
+    const add2 = who === 'owner' && req.body.addOwner2 === '1';
+    const name2 = String(req.body.name2 || '').trim();
+    const image2 = String(req.body.signature2 || '');
+    if (add2) {
+      if (!name2) return back('Please type the second owner’s full name.');
+      if (!image2.startsWith('data:image/png;base64,') || image2.length < 500) return back('Please have the second owner sign in their box.');
+    }
+
+    const meta = { at: new Date().toISOString(), method: 'electronic', ip: req.ip, userAgent: String(req.get('user-agent') || '').slice(0, 300) };
+    const sig = { name, image, ...meta, email: who === 'owner' ? o.ownerEmail : '' };
     const signatures = { ...(o.signatures || {}), [who]: sig };
-    store.updateOrder(o.id, { signatures, status: 'signed' });
+    const patch = { signatures, status: 'signed' };
+    if (who === 'owner2') patch.owner2Name = name;
+    if (add2) {
+      signatures.owner2 = { name: name2, image: image2, ...meta, email: '' };
+      patch.owner2Name = name2;
+    }
+    store.updateOrder(o.id, patch);
     store.addEvent(o.id, 'signed', `Signed by ${name}${who === 'owner2' ? ' (second owner)' : ''}`);
+    if (add2) store.addEvent(o.id, 'signed', `Signed by ${name2} (second owner)`);
 
     // Make sure the contractor signature is on the final copy if one is saved.
     const fresh = store.getOrder(o.id);

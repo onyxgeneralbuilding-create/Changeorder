@@ -90,6 +90,14 @@
     };
 
     window.addEventListener('resize', resize);
+    // Also size the pad when it first becomes visible (e.g. inside a hidden section).
+    if (window.ResizeObserver) {
+      let lastW = 0;
+      new ResizeObserver(() => {
+        const w = canvas.getBoundingClientRect().width;
+        if (w && w !== lastW) { lastW = w; resize(); }
+      }).observe(canvas);
+    }
     resize();
   }
   window.SignaturePad = SignaturePad;
