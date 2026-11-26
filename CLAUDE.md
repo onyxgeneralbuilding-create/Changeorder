@@ -128,7 +128,7 @@ The owner works mostly from an **iPad in Safari** and is not a developer. Explai
 
 ## Backups
 - **Data:** Settings → Backup → **Download backup** (`/settings/backup`, owner only) returns a .zip (`lib/zip.js`, no compression) of `db.json` plus `pdfs/` (the frozen signed copies). `lastBackupAt` is shown in Settings.
-- **Code:** each named version is tagged in git, e.g. `badass-0.5`. GitHub → Releases/Tags → Download ZIP gets that exact version.
+- **Code:** pushing git tags from the cloud session is blocked, so named versions are saved as a `git archive` .zip sent to the owner. Version BadAss 0.5 = commit 7808d3d. GitHub → Code → Download ZIP on the branch also gets the latest.
 
 ## Testing
 - Run the app locally with:
