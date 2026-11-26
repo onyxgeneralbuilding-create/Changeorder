@@ -593,6 +593,7 @@ app.post('/settings', requireOwner, async (req, res) => {
     salesmanName: str('salesmanName'),
     salesmanReg: str('salesmanReg'),
     paymentInstructions: String(req.body.paymentInstructions || '').trim().slice(0, 600),
+    payMethods: Object.fromEntries(require('./lib/pay-methods').METHODS.map((m) => [m.key, String(req.body[`pm_${m.key}`] ?? '').trim().slice(0, 300)])),
     contractorSignerTitle: str('contractorSignerTitle') || 'Owner',
     cglExpires: /^\d{4}-\d{2}-\d{2}$/.test(str('cglExpires')) ? str('cglExpires') : '',
     wcExpires: /^\d{4}-\d{2}-\d{2}$/.test(str('wcExpires')) ? str('wcExpires') : '',

@@ -94,7 +94,11 @@ The owner works mostly from an **iPad in Safari** and is not a developer. Explai
   - **Status:** draft, unpaid, partially paid, paid, or overdue (when past the due date).
   - **Dashboard:** a Payments section shows collected (by payment date and year), outstanding, overdue, and lien releases waiting. Contract detail has a Payments card.
   - **Design:** invoice, receipt and release PDFs use a clean modern layout (white page, navy band, Inter Tight), not the Builder's Book look. The owner asked for "nicer, clean and modern."
-  - **Settings:** "How customers can pay" text is printed on invoices, and "Your title" is used on releases.
+  - **Payment methods** (`lib/pay-methods.js`): Zelle, Check, Credit card, Bank transfer, Cash and Other.
+    - Details are set per method in Settings → Invoices; an empty detail turns the method off.
+    - Each invoice stores `payMethods` (chosen on the new-invoice form, and editable on the invoice page). Only those are printed under "How to pay" and in the invoice email. Web links in a method's details are clickable in the PDF.
+    - Credit card is listed only, not processed: the owner pastes a Square or Stripe link, or a "call to pay" note. "Credit card" is also an option when recording a payment.
+  - **Settings:** "Extra note on every invoice" (`paymentInstructions`) is printed under the methods, and "Your title" is used on releases.
 - **Customers** (`/customers`; files `lib/routes-customers.js`, `lib/views-customers.js`; stored in `db.customers`). This replaced the Leads placeholder; `/leads` redirects here.
   - **Fields:** match the form field names (ownerName, owner2Name, ownerAddress, ownerCityStateZip, ownerPhone, ownerEmail, workAddress, workCityStateZip), plus notes, createdBy and createdByName.
   - **On the forms:** the contract and change order forms have a Customer picker (`customerPicker` in views.js) that fills the fields and sets `customerId` on the document. If no customer is picked, "Save this customer to Customers" (checked by default) creates one.
