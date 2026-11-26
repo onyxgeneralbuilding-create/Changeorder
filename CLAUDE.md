@@ -96,7 +96,7 @@ The owner works mostly from an **iPad in Safari** and is not a developer. Explai
   - **Design:** invoice, receipt and release PDFs use a clean modern layout (white page, navy band, Inter Tight), not the Builder's Book look. The owner asked for "nicer, clean and modern."
   - **Payment methods** (`lib/pay-methods.js`): Zelle, Check, Credit card, Bank transfer, Cash and Other.
     - Details are set per method in Settings → Invoices; an empty detail turns the method off.
-    - Each invoice stores `payMethods` (chosen on the new-invoice form, and editable on the invoice page). Only those are printed under "How to pay" and in the invoice email. Web links in a method's details are clickable in the PDF.
+    - Each invoice stores `payMethods` (chosen on the new-invoice form, and editable on the invoice page). Methods are pre-checked only if marked "Checked by default" in Settings (`payDefaults`, empty until set; the owner didn't want all pre-checked). At least one method is required. Only those are printed under "How to pay" and in the invoice email. Web links in a method's details are clickable in the PDF.
     - Credit card is listed only, not processed: the owner pastes a Square or Stripe link, or a "call to pay" note. "Credit card" is also an option when recording a payment.
   - **Settings:** "Extra note on every invoice" (`paymentInstructions`) is printed under the methods, and "Your title" is used on releases.
 - **Customers** (`/customers`; files `lib/routes-customers.js`, `lib/views-customers.js`; stored in `db.customers`). This replaced the Leads placeholder; `/leads` redirects here.

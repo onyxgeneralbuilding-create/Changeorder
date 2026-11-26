@@ -338,3 +338,6 @@ dl.mini dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
 .ac-list li:hover, .ac-list li.on { background: #f0f2f5; }
 .ac-list li.ac-foot { cursor: default; font-size: .72rem; color: var(--muted); padding: .35rem .85rem .2rem; border-top: 1px solid var(--rule); margin-top: .2rem; }
 .ac-list li.ac-foot:hover { background: transparent; }
+.pm-row { margin-bottom: .6rem; }
+.pm-row label { margin-bottom: .3rem; }
+.pm-row .check.small { font-size: .88rem !important; color: var(--muted); }
