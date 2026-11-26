@@ -86,6 +86,10 @@ The owner works mostly from an **iPad in Safari** and is not a developer. Explai
   - **Code:** `lib/context.js` (AsyncLocalStorage) exposes the logged-in user to the views.
 - **Invoices** (`/invoices`; files `lib/invoices.js`, `lib/routes-invoices.js`, `lib/views-invoices.js`, `lib/pdf-invoice.js`, `lib/lien-text.js`):
   - **Data:** stored in `db.invoices` (numbered INV-1001…), each tied to a contract (`contractId`). `createdBy` is copied from the contract, so team members see their own.
+  - **Change orders:** a signed change order with an added cost can be invoiced too (the picker on /invoices/new lists contracts and signed change orders not yet billed).
+    - Linked to a contract (`contractId`): redirects to the contract's invoice with that `co-<id>` line pre-checked, so the contract balance stays right.
+    - Stand-alone (no contract, e.g. the contract was on paper): its own invoice with `contractId` = the change order's id; payments, receipts and lien releases work the same (final release once it's paid in full).
+    - A `co-<id>` line can only be billed once across all invoices. The change order page shows a Payments card.
   - **Lines:** come from the contract's down payment, its progress payments and signed change orders linked to it (`contractId` on the change order form), plus an optional custom line. Lines already invoiced are hidden.
   - **Payments:** recorded by the owner or the member; there are no card payments. Each gets a receipt (RCT-1001…), emailed with a PDF.
   - **Lien releases:** the statutory unconditional release (§8134 progress, or §8138 final once the contract balance is 0) is signed with the owner's saved signature and title.

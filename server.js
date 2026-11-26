@@ -388,7 +388,10 @@ app.get('/orders/:id', requireLogin, loadOrder, (req, res) => {
     company, order: req.order, settings: store.getSettings(),
     emailReady: notify.emailConfigured(),
     signLink: signLink(req.order), flash: takeFlash(req), warnings: contractWarnings(req.order),
-    ledger: isContract(req.order) ? { ...calc.contractLedger(req.order), invoiceRows: calc.contractLedger(req.order).invoices.map((i) => ({ inv: i, sm: calc.summary(i) })) } : null,
+    ledger: isContract(req.order) ? { ...calc.contractLedger(req.order), invoiceRows: calc.contractLedger(req.order).invoices.map((i) => ({ inv: i, sm: calc.summary(i) })) }
+      : req.order.status === 'signed' && f.signedAmount(req.order) > 0
+        ? { ...calc.contractLedger(req.order), parent: calc.parentContract(req.order), invoiceRows: calc.coInvoices(req.order).map((i) => ({ inv: i, sm: calc.summary(i) })) }
+        : null,
   }));
 });
 
