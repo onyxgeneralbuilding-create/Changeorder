@@ -105,7 +105,7 @@ The owner works mostly from an **iPad in Safari** and is not a developer. Explai
   - **Dashboard** (`/dashboard`) holds the "at a glance" totals, the year picker and the Business tiles. Everyone lands there after logging in.
   - **Documents** (`/`) is just the list, with the New buttons and status filters.
   - **Estimates** (`/estimates`) is a "Coming soon" placeholder page (`views.comingSoon`) until it's built.
-- **Branding:** the app is named **"Onyx Contracts Hub"** (`appName`). Customers see only the company name.
+- **Branding:** the app is named **"Onyx General Building CRM (Version BadAss 0.5)"** (`appName`; formerly "Onyx Contracts Hub"). Customers see only the company name.
 
 ## Deployment (Render)
 - **Service:** the dashboard name is `onyx-contracts-hub` (the owner renamed it). The address is still https://onyx-change-orders.onrender.com.

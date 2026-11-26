@@ -574,7 +574,7 @@ app.post('/settings/test-reminder', requireOwner, async (req, res) => {
   try {
     const lines = reminders.renewalList(company, store.getSettings()).filter((r) => r.date)
       .map((r) => `• ${r.label}: ${f.date(r.date)} (${reminders.daysLeft(r.date)} days left)`);
-    await notify.sendEmail({ to, subject: 'Test: Onyx Contracts Hub renewal reminders', text: `Renewal reminders are working. You'll get emails 60, 30, 7 and 1 days before each date, on the day, and if one lapses.\n\n${lines.join('\n')}` });
+    await notify.sendEmail({ to, subject: 'Test: Onyx CRM renewal reminders', text: `Renewal reminders are working. You'll get emails 60, 30, 7 and 1 days before each date, on the day, and if one lapses.\n\n${lines.join('\n')}` });
     setFlash(req, `Test reminder sent to ${to}.`);
   } catch (e) { setFlash(req, `Couldn’t send the test: ${e.message}`, 'error'); }
   res.redirect('/settings#renewals');
@@ -762,7 +762,7 @@ app.use((err, req, res, _next) => {
 });
 
 if (require.main === module) {
-  app.listen(PORT, () => console.log(`Onyx Contracts Hub running at ${APP_URL} (port ${PORT})`));
+  app.listen(PORT, () => console.log(`Onyx CRM running at ${APP_URL} (port ${PORT})`));
   reminders.startReminders(company, APP_URL);
 }
 

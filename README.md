@@ -1,4 +1,4 @@
-# Onyx Contracts Hub
+# Onyx General Building CRM (Version BadAss 0.5)
 
 Create **Home Improvement Contracts** and **Change Orders** on your company forms. Send them to customers by **email**, and have customers **sign on their phone**. Signed copies are emailed to you and the customer automatically.
 
