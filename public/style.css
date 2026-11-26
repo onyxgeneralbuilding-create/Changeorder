@@ -327,3 +327,14 @@ dl.mini dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
 .search input:focus { outline: none; border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); }
 .ledger > div > span:not(.stat-label) { font-size: .95rem; }
 [hidden] { display: none !important; }
+
+/* address suggestions */
+.ac { position: relative; }
+.ac-list { position: absolute; z-index: 20; left: 0; right: 0; top: calc(100% + 4px); margin: 0; padding: .3rem 0; list-style: none;
+  background: #fff; border: 1px solid #c4c4c4; border-radius: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, .08); font-weight: 400; }
+.ac-list li { padding: .55rem .85rem; cursor: pointer; display: flex; flex-direction: column; gap: .05rem; }
+.ac-list li b { font-weight: 500; }
+.ac-list li span { color: var(--muted); font-size: .85rem; }
+.ac-list li:hover, .ac-list li.on { background: #f0f2f5; }
+.ac-list li.ac-foot { cursor: default; font-size: .72rem; color: var(--muted); padding: .35rem .85rem .2rem; border-top: 1px solid var(--rule); margin-top: .2rem; }
+.ac-list li.ac-foot:hover { background: transparent; }

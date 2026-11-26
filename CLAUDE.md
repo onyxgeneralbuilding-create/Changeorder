@@ -27,6 +27,10 @@ The owner works mostly from an **iPad in Safari** and is not a developer. Explai
 - Email goes through Gmail SMTP with an App Password (`lib/notify.js`).
 - **No texting at all.** The owner decided against Twilio and also against the "Text it from my phone" link, and both were removed. Documents go by email; the detail page also has a **Copy** button for the signing link.
 - Google reviews tile (`lib/reviews.js`) uses the Places API (New) with `GOOGLE_PLACES_API_KEY` (an env var) and a Place ID entered in Settings. It's cached for 6 hours and keeps one snapshot per day to show monthly and yearly gains. It was connected in November 2026 with the key restricted to Places API (New), and showed 5.0 stars and 7 reviews.
+- **Address autocomplete:** `public/address.js` with `lib/routes-places.js` uses Places API (New) Autocomplete and Place Details through the server, with the same `GOOGLE_PLACES_API_KEY`.
+  - It works on any `ownerAddress` or `workAddress` input and fills the matching City, State & Zip.
+  - The city comes from the community name Google shows in the suggestion (e.g. Granada Hills), not the official locality (Los Angeles).
+  - The key must also allow "Places API (New)" Autocomplete; it's the same API, so the existing restriction covers it.
 - Renewal reminder emails (`lib/reminders.js`) are checked hourly inside the app. They go out 60, 30, 7 and 1 days before, on the day, and once if lapsed.
 
 ## Files
@@ -92,7 +96,7 @@ The owner works mostly from an **iPad in Safari** and is not a developer. Explai
   - **Design:** invoice, receipt and release PDFs use a clean modern layout (white page, navy band, Inter Tight), not the Builder's Book look. The owner asked for "nicer, clean and modern."
   - **Settings:** "How customers can pay" text is printed on invoices, and "Your title" is used on releases.
 - **Customers** (`/customers`; files `lib/routes-customers.js`, `lib/views-customers.js`; stored in `db.customers`). This replaced the Leads placeholder; `/leads` redirects here.
-  - **Fields:** match the form field names (ownerName, owner2Name, ownerAddress, ownerCityStateZip, ownerPhone, ownerFax, ownerEmail, workAddress, workCityStateZip), plus notes, createdBy and createdByName.
+  - **Fields:** match the form field names (ownerName, owner2Name, ownerAddress, ownerCityStateZip, ownerPhone, ownerEmail, workAddress, workCityStateZip), plus notes, createdBy and createdByName.
   - **On the forms:** the contract and change order forms have a Customer picker (`customerPicker` in views.js) that fills the fields and sets `customerId` on the document. If no customer is picked, "Save this customer to Customers" (checked by default) creates one.
   - **Prefill:** `?customer=ID` on /contracts/new and /orders/new prefills the form. The customer page links to both.
   - **Import:** on first run, customers were built from existing documents, matched by creator and name.

@@ -743,6 +743,8 @@ app.post('/s/:token/decline', loadByToken, (req, res) => {
   res.redirect(`/s/${req.params.token}`);
 });
 
+require('./lib/routes-places')(app, { requireLogin });
+
 require('./lib/routes-customers')(app, {
   company, html, setFlash, takeFlash, requireLogin, isOwner, creator, canSeeCustomer, visibleOrders, CUSTOMER_KEYS,
   notFound: (res) => html(res, views.notFound({ company }), 404),
