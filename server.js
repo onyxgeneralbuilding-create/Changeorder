@@ -561,6 +561,30 @@ app.post('/settings/users/:uid/delete', requireOwner, (req, res) => {
   res.redirect('/settings#team');
 });
 
+// Backup: everything on the data disk (records + signed PDFs) as one .zip.
+app.get('/settings/backup', requireOwner, (req, res) => {
+  const { zip } = require('./lib/zip');
+  const dir = store.DATA_DIR;
+  const files = [];
+  const add = (rel) => {
+    const full = path.join(dir, rel);
+    const st = fs.statSync(full);
+    files.push({ name: rel, data: fs.readFileSync(full), date: st.mtime });
+  };
+  if (fs.existsSync(path.join(dir, 'db.json'))) add('db.json');
+  const pdfDir = path.join(dir, 'pdfs');
+  if (fs.existsSync(pdfDir)) fs.readdirSync(pdfDir).filter((n) => n.endsWith('.pdf')).forEach((n) => add(`pdfs/${n}`));
+  files.push({ name: 'README.txt', data: Buffer.from([
+    `${company.appName || company.name} backup — ${new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })} PT`,
+    '', 'db.json   All customers, contracts, change orders, invoices, payments, team and settings.',
+    'pdfs/     Signed copies exactly as customers signed them.', '',
+    'Keep this file somewhere safe. It contains customer information and signatures.',
+  ].join('\r\n')) });
+  const stamp = f.todayISO();
+  store.updateSettings({ lastBackupAt: new Date().toISOString() });
+  res.type('application/zip').set('Content-Disposition', `attachment; filename="Onyx-CRM-backup-${stamp}.zip"`).send(zip(files));
+});
+
 app.post('/settings/refresh-reviews', requireOwner, async (req, res) => {
   const rv = await reviews.getReviews({ force: true });
   if (!rv.configured) setFlash(req, 'Add your Google Place ID in Settings and GOOGLE_PLACES_API_KEY in Render first.', 'error');
