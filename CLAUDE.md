@@ -128,6 +128,8 @@ The owner works mostly from an **iPad in Safari** and is not a developer. Explai
 
 ## Backups
 - **Data:** Settings → Backup → **Download backup** (`/settings/backup`, owner only) returns a .zip (`lib/zip.js`, no compression) of `db.json` plus `pdfs/` (the frozen signed copies). `lastBackupAt` is shown in Settings.
+- **Weekly email** (`lib/backup.js`): the same zip is emailed to `NOTIFY_EMAIL` every Sunday from 7 AM PT, checked hourly; it won't resend within 6 days. If the zip is over 20 MB, it's sent without PDFs and says so.
+  - Settings → Backup has an on/off checkbox (`weeklyBackup`, on unless set false) and an "Email me a backup now" button.
 - **Code:** pushing git tags from the cloud session is blocked, so named versions are saved as a `git archive` .zip sent to the owner. Version BadAss 0.5 = commit 7808d3d. GitHub → Code → Download ZIP on the branch also gets the latest.
 
 ## Testing

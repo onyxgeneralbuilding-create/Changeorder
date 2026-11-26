@@ -563,26 +563,25 @@ app.post('/settings/users/:uid/delete', requireOwner, (req, res) => {
 
 // Backup: everything on the data disk (records + signed PDFs) as one .zip.
 app.get('/settings/backup', requireOwner, (req, res) => {
-  const { zip } = require('./lib/zip');
-  const dir = store.DATA_DIR;
-  const files = [];
-  const add = (rel) => {
-    const full = path.join(dir, rel);
-    const st = fs.statSync(full);
-    files.push({ name: rel, data: fs.readFileSync(full), date: st.mtime });
-  };
-  if (fs.existsSync(path.join(dir, 'db.json'))) add('db.json');
-  const pdfDir = path.join(dir, 'pdfs');
-  if (fs.existsSync(pdfDir)) fs.readdirSync(pdfDir).filter((n) => n.endsWith('.pdf')).forEach((n) => add(`pdfs/${n}`));
-  files.push({ name: 'README.txt', data: Buffer.from([
-    `${company.appName || company.name} backup — ${new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })} PT`,
-    '', 'db.json   All customers, contracts, change orders, invoices, payments, team and settings.',
-    'pdfs/     Signed copies exactly as customers signed them.', '',
-    'Keep this file somewhere safe. It contains customer information and signatures.',
-  ].join('\r\n')) });
-  const stamp = f.todayISO();
+  const b = require('./lib/backup').buildBackup(company);
   store.updateSettings({ lastBackupAt: new Date().toISOString() });
-  res.type('application/zip').set('Content-Disposition', `attachment; filename="Onyx-CRM-backup-${stamp}.zip"`).send(zip(files));
+  res.type('application/zip').set('Content-Disposition', `attachment; filename="${b.filename}"`).send(b.buffer);
+});
+
+app.post('/settings/backup/email', requireOwner, async (req, res) => {
+  const to = process.env.NOTIFY_EMAIL || company.email;
+  try {
+    await require('./lib/backup').emailBackup(company, to);
+    setFlash(req, `Backup emailed to ${to}.`);
+  } catch (e) { setFlash(req, `Couldn’t email the backup: ${e.message}`, 'error'); }
+  res.redirect('/settings#backup');
+});
+
+app.post('/settings/backup/weekly', requireOwner, (req, res) => {
+  const on = req.body.weeklyBackup === '1';
+  store.updateSettings({ weeklyBackup: on });
+  setFlash(req, on ? 'Weekly backup email is on (Sundays, 7 AM).' : 'Weekly backup email is off.');
+  res.redirect('/settings#backup');
 });
 
 app.post('/settings/refresh-reviews', requireOwner, async (req, res) => {
@@ -790,6 +789,7 @@ app.use((err, req, res, _next) => {
 if (require.main === module) {
   app.listen(PORT, () => console.log(`Onyx CRM running at ${APP_URL} (port ${PORT})`));
   reminders.startReminders(company, APP_URL);
+  require('./lib/backup').startWeeklyBackup(company);
 }
 
 module.exports = app;
